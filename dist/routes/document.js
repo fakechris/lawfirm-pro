@@ -1,0 +1,22 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const document_1 = require("../controllers/document");
+const auth_1 = require("../middleware/auth");
+const audit_1 = require("../middleware/audit");
+const upload_1 = require("../middleware/upload");
+const router = (0, express_1.Router)();
+const documentController = new document_1.DocumentController();
+router.post('/upload', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, upload_1.uploadSingle, upload_1.handleUploadError, audit_1.AuditMiddleware.logUserAction('DOCUMENT_UPLOAD', 'document'), documentController.uploadDocument.bind(documentController));
+router.get('/case/:caseId', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.getCaseDocuments.bind(documentController));
+router.get('/:documentId', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.getDocumentById.bind(documentController));
+router.get('/:documentId/download', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, audit_1.AuditMiddleware.logUserAction('DOCUMENT_DOWNLOAD', 'document'), documentController.downloadDocument.bind(documentController));
+router.patch('/:documentId', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, audit_1.AuditMiddleware.logDataModification('DOCUMENT_UPDATE', 'document'), documentController.updateDocument.bind(documentController));
+router.delete('/:documentId', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, audit_1.AuditMiddleware.logUserAction('DOCUMENT_DELETE', 'document'), documentController.deleteDocument.bind(documentController));
+router.post('/:documentId/access/grant', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.grantDocumentAccess.bind(documentController));
+router.post('/:documentId/access/revoke', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.revokeDocumentAccess.bind(documentController));
+router.get('/:documentId/access', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.getDocumentAccess.bind(documentController));
+router.get('/search', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.searchDocuments.bind(documentController));
+router.get('/stats', auth_1.AuthMiddleware.authenticate, auth_1.AuthMiddleware.clientOrAttorney, documentController.getDocumentStats.bind(documentController));
+exports.default = router;
+//# sourceMappingURL=document.js.map

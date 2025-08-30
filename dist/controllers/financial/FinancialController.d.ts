@@ -1,0 +1,40 @@
+import { Request, Response } from 'express';
+import { FinancialService } from '../services/financial/FinancialService';
+export declare class FinancialController {
+    private financialService;
+    constructor(financialService: FinancialService);
+    createBillingNode(req: Request, res: Response): Promise<void>;
+    getBillingNodesByCase(req: Request, res: Response): Promise<void>;
+    updateBillingNode(req: Request, res: Response): Promise<void>;
+    createInvoice(req: Request, res: Response): Promise<void>;
+    getInvoiceById(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
+    getInvoicesByClient(req: Request, res: Response): Promise<void>;
+    updateInvoiceStatus(req: Request, res: Response): Promise<void>;
+    createTimeEntry(req: Request, res: Response): Promise<void>;
+    getTimeEntriesByCase(req: Request, res: Response): Promise<void>;
+    getTimeEntriesByUser(req: Request, res: Response): Promise<void>;
+    createExpense(req: Request, res: Response): Promise<void>;
+    getExpensesByCase(req: Request, res: Response): Promise<void>;
+    getExpensesByUser(req: Request, res: Response): Promise<void>;
+    createPayment(req: Request, res: Response): Promise<void>;
+    updatePaymentStatus(req: Request, res: Response): Promise<void>;
+    getPaymentsByInvoice(req: Request, res: Response): Promise<void>;
+    createTrustAccount(req: Request, res: Response): Promise<void>;
+    getTrustAccountsByClient(req: Request, res: Response): Promise<void>;
+    createTrustTransaction(req: Request, res: Response): Promise<void>;
+    getFinancialReport(req: Request, res: Response): Promise<void>;
+    generateCaseBilling(req: Request, res: Response): Promise<void>;
+    calculateFee(req: Request, res: Response): Promise<void>;
+    getInvoiceStatuses(req: Request, res: Response): void;
+    getFeeTypes(req: Request, res: Response): void;
+    getExpenseCategories(req: Request, res: Response): void;
+    getPaymentMethods(req: Request, res: Response): void;
+    getPaymentStatuses(req: Request, res: Response): void;
+    getTrustTransactionTypes(req: Request, res: Response): void;
+    processPayment(req: Request, res: Response): Promise<void>;
+    checkPaymentStatus(req: Request, res: Response): Promise<void>;
+    refundPayment(req: Request, res: Response): Promise<void>;
+    getPaymentHistory(req: Request, res: Response): Promise<void>;
+    getAvailablePaymentMethods(req: Request, res: Response): Promise<void>;
+}
+//# sourceMappingURL=FinancialController.d.ts.map

@@ -8,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  extensions = [vector]
 }
 
 model User {
@@ -26,11 +25,9 @@ model User {
   attorneyProfile AttorneyProfile?
   assignedTasks  Task[] @relation("TaskAssignee")
   createdTasks   Task[] @relation("TaskCreator")
-  comments       DocumentComment[]
-  sharedDocuments DocumentShare[] @relation("SharedByUser")
-  receivedShares DocumentShare[] @relation("SharedWithUser")
-  auditLogs      AuditLog[]
-  evidenceItems  EvidenceItem[]
+  invoices      Invoice[]
+  timeEntries   TimeEntry[]
+  expenses      Expense[]
 
   @@map("users")
 }
@@ -47,6 +44,8 @@ model ClientProfile {
   // Relations
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   cases  Case[]
+  invoices Invoice[]
+  trustAccounts TrustAccount[]
 
   @@map("client_profiles")
 }
@@ -86,6 +85,12 @@ model Case {
   attorney    AttorneyProfile @relation(fields: [attorneyId], references: [id])
   documents   Document[]
   tasks       Task[]
+  evidenceItems EvidenceItem[]
+  invoices    Invoice[]
+  billingNodes BillingNode[]
+  timeEntries  TimeEntry[]
+  expenses     Expense[]
+  trustAccounts TrustAccount[]
 
   @@map("cases")
 }
@@ -111,16 +116,15 @@ model Document {
   version       Int               @default(1)
   thumbnailPath String?
   extractedText String?
-  searchVector  Vector?
   
   // Relations
   case          Case?             @relation(fields: [caseId], references: [id], onDelete: Cascade)
   versions      DocumentVersion[]
-  template      DocumentTemplate? @relation("DocumentTemplateSource")
+  template      DocumentTemplate? @relation("DocumentTemplateSource", fields: [templateId], references: [id])
+  templateId    String?
   workflow      DocumentWorkflow?
   comments      DocumentComment[]
   shares        DocumentShare[]
-  auditLogs     AuditLog[]
 
   @@map("documents")
 }
@@ -531,7 +535,6 @@ model DocumentComment {
   
   // Relations
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id])
   parent     DocumentComment? @relation("CommentReplies", fields: [parentId], references: [id])
   replies    DocumentComment[] @relation("CommentReplies")
   
@@ -552,8 +555,6 @@ model DocumentShare {
   
   // Relations
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  sharedByUser User   @relation("SharedByUser", fields: [sharedBy], references: [id])
-  sharedWithUser User @relation("SharedWithUser", fields: [sharedWith], references: [id])
   
   @@map("document_shares")
 }
@@ -616,7 +617,6 @@ model EvidenceItem {
   // Relations
   case             Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
   chainOfCustody   EvidenceChain[]
-  document         Document?        @relation(fields: [id], references: [id])
   
   @@map("evidence_items")
 }
@@ -643,7 +643,6 @@ model SearchIndex {
   entityType  String
   content     String
   metadata    Json?
-  vector      Vector?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

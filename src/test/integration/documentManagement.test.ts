@@ -1,9 +1,9 @@
-import { DocumentService } from '../../src/services/documents/documentService';
-import { OCRService } from '../../src/utils/document-processing/ocrService';
-import { DocumentCollaborationService } from '../../src/services/documents/collaborationService';
-import { DocumentSearchService } from '../../src/services/documents/searchService';
-import { DocumentPerformanceService } from '../../src/services/documents/performanceService';
-import { DocumentSecurityService } from '../../src/services/documents/securityService';
+import { DocumentService } from '../../src/services/documents';
+import { OCRService } from '../../src/utils/document-processing';
+import { DocumentCollaborationService } from '../../src/services/documents';
+import { DocumentSearchService } from '../../src/services/documents';
+import { DocumentPerformanceService } from '../../src/services/documents';
+import { DocumentSecurityService } from '../../src/services/documents';
 import { PrismaClient } from '@prisma/client';
 
 describe('Document Management System Integration Tests', () => {

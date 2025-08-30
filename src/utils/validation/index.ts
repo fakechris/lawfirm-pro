@@ -236,3 +236,14 @@ export class DocumentValidator {
     return tags.every(tag => this.validateTag(tag)) && tags.length <= 20;
   }
 }
+
+export const validateRequest = (schema: any) => {
+  return (req: any, res: any, next: any) => {
+    try {
+      schema.parse(req.body);
+      next();
+    } catch (error) {
+      res.status(400).json({ error: 'Validation failed', details: error });
+    }
+  };
+};

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { DocumentService } from '../../services/documents/documentService';
 import { PrismaClient } from '@prisma/client';
-import { multer } from 'multer';
+import multer from 'multer';
 import { authMiddleware } from '../../middleware/auth';
 import { validateRequest } from '../../utils/validation';
 import { z } from 'zod';
@@ -125,7 +125,8 @@ router.put('/:id', validateRequest(updateDocumentSchema), async (req: Request, r
     }
 
     // Check if user can edit
-    if (document.uploadedBy !== (req as any).user.id) && (req as any).user.role !== 'ADMIN') {
+    const user = (req as any).user;
+    if (document.uploadedBy !== user.id && user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -147,7 +148,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
 
     // Check if user can delete
-    if (document.uploadedBy !== (req as any).user.id && (req as any).user.role !== 'ADMIN') {
+    const user = (req as any).user;
+    if (document.uploadedBy !== user.id && user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Access denied' });
     }
 
