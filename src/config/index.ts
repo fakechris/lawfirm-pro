@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { integrationConfig } from './integration';
 
 dotenv.config();
 
@@ -82,5 +83,7 @@ export const config = {
     minContentLength: parseInt(process.env.SEARCH_MIN_CONTENT_LENGTH || '50'),
     maxContentLength: parseInt(process.env.SEARCH_MAX_CONTENT_LENGTH || '1000000'),
     batchSize: parseInt(process.env.SEARCH_BATCH_SIZE || '100')
-  }
+  },
+  
+  integration: integrationConfig
 };
