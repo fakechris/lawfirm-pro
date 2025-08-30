@@ -25,39 +25,22 @@ model User {
   attorneyProfile AttorneyProfile?
   assignedTasks  Task[] @relation("TaskAssignee")
   createdTasks   Task[] @relation("TaskCreator")
-  invoices       Invoice[]
-  timeEntries    TimeEntry[]
-  expenses       Expense[]
 
   @@map("users")
 }
 
 model ClientProfile {
-  id          String @id @default(cuid())
-  userId      String @unique
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  city        String?
-  province    String?
-  country     String?
-  postalCode  String?
-  company     String?
-  taxId       String?  // 税号 for Chinese clients
-  idNumber    String?  // 身份证号 for Chinese individuals
-  notes       String?
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String @id @default(cuid())
+  userId    String @unique
+  phone     String?
+  address   String?
+  company   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cases       Case[]
-  invoices    Invoice[]
-  payments    Payment[]
-  expenses    Expense[]
-  trustAccounts TrustAccount[]
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cases  Case[]
 
   @@map("client_profiles")
 }
