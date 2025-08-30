@@ -142,11 +142,14 @@ model User {
   updatedAt   DateTime @updatedAt
   
   // 关联关系
-  cases       Case[]
-  tasks       Task[]
-  documents   Document[]
-  timeEntries TimeEntry[]
-  notes       Note[]
+  leadCases   Case[]                @relation("LeadLawyer")
+  assignedTasks Task[]              @relation("TaskAssignee")
+  createdTasks Task[]               @relation("TaskCreator")
+  uploadedDocuments Document[]      @relation("UserDocuments")
+  timeEntries TimeEntry[]           @relation("UserTimeEntries")
+  notes       Note[]                @relation("UserNotes")
+  caseMemberships CaseTeamMember[]  @relation("UserCaseMemberships")
+  documentApprovals DocumentApproval[] @relation("UserDocumentApprovals")
   
   @@map("users")
 }
@@ -229,7 +232,7 @@ model CaseTeamMember {
   
   // 关联关系
   case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User     @relation("UserCaseMemberships", fields: [userId], references: [id], onDelete: Cascade)
   
   @@unique([caseId, userId])
   @@map("case_team_members")
@@ -279,8 +282,8 @@ model Task {
   assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdBy   User        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
   subtasks    SubTask[]
-  dependencies TaskDependency[]
-  dependents   TaskDependency[]
+  dependencies TaskDependency[] @relation("TaskDependencies")
+  dependents   TaskDependency[] @relation("TaskDependents")
   
   @@map("tasks")
 }
@@ -356,7 +359,7 @@ model Document {
   // 关联关系
   case        Case?         @relation(fields: [caseId], references: [id], onDelete: Cascade)
   client      Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  uploadedBy  User          @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedBy  User          @relation("UserDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
   parent      Document?     @relation("DocumentParent", fields: [parentId], references: [id], onDelete: SetNull)
   children    Document[]    @relation("DocumentParent")
   versions    DocumentVersion[]
@@ -395,7 +398,7 @@ model DocumentApproval {
   
   // 关联关系
   document    Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  approver    User             @relation(fields: [approverId], references: [id], onDelete: Restrict)
+  approver    User             @relation("UserDocumentApprovals", fields: [approverId], references: [id], onDelete: Restrict)
   
   @@map("document_approvals")
 }
@@ -491,7 +494,7 @@ model TimeEntry {
   
   // 关联关系
   case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserTimeEntries", fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("time_entries")
 }
@@ -512,7 +515,7 @@ model Note {
   
   // 关联关系
   case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("notes")
 }
