@@ -1,40 +1,40 @@
 import { Router } from 'express';
-import { AuthController } from '../controllers/auth';
+import { AuthController } from '../controllers/AuthController';
 import { AuthMiddleware } from '../middleware/auth';
-import { AuditMiddleware } from '../middleware/audit';
 
 const router = Router();
-const authController = new AuthController();
 
-router.post('/login', 
-  AuditMiddleware.logUserAction('USER_LOGIN', 'auth'),
-  authController.login.bind(authController)
-);
+// Public routes
+router.post('/login', AuthController.login);
+router.post('/register', AuthController.register);
+router.post('/refresh', AuthController.refreshToken);
+router.post('/verify', AuthController.verifyToken);
 
-router.post('/register', 
-  AuditMiddleware.logUserAction('USER_REGISTER', 'auth'),
-  authController.register.bind(authController)
-);
+// Protected routes
+router.post('/logout', AuthMiddleware.authenticate, AuthController.logout);
+router.post('/logout-all', AuthMiddleware.authenticate, AuthController.logoutAll);
+router.post('/change-password', AuthMiddleware.authenticate, AuthController.changePassword);
+router.get('/current-user', AuthMiddleware.authenticate, AuthController.getCurrentUser);
+router.get('/sessions', AuthMiddleware.authenticate, AuthController.getUserSessions);
+router.delete('/sessions/:sessionId', AuthMiddleware.authenticate, AuthController.revokeSession);
 
-router.post('/verify', 
+// Admin routes
+router.post('/reset-password', 
   AuthMiddleware.authenticate,
-  authController.verify.bind(authController)
+  AuthMiddleware.requirePermission('users:update'),
+  AuthController.resetPassword
 );
 
-router.post('/change-password', 
+router.post('/create-user', 
   AuthMiddleware.authenticate,
-  authController.changePassword.bind(authController)
+  AuthMiddleware.requirePermission('users:create'),
+  AuthController.createUser
 );
 
-router.put('/profile', 
+router.post('/initialize', 
   AuthMiddleware.authenticate,
-  authController.updateProfile.bind(authController)
-);
-
-router.post('/logout', 
-  AuthMiddleware.authenticate,
-  AuditMiddleware.logUserAction('USER_LOGOUT', 'auth'),
-  authController.logout.bind(authController)
+  AuthMiddleware.requirePermission('system:configure'),
+  AuthController.initialize
 );
 
 export default router;
