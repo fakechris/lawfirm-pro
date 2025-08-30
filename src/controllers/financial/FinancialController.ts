@@ -288,4 +288,59 @@ export class FinancialController {
     const types = Object.values(TrustTransactionType);
     res.json({ success: true, data: types });
   }
+
+  // Payment Processing endpoints
+  async processPayment(req: Request, res: Response) {
+    try {
+      const result = await this.financialService.processPayment(req.body);
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      res.status(400).json({ success: false, error: (error as Error).message });
+    }
+  }
+
+  async checkPaymentStatus(req: Request, res: Response) {
+    try {
+      const { paymentId } = req.params;
+      const status = await this.financialService.checkPaymentStatus(paymentId);
+      res.json({ success: true, data: { status } });
+    } catch (error) {
+      res.status(400).json({ success: false, error: (error as Error).message });
+    }
+  }
+
+  async refundPayment(req: Request, res: Response) {
+    try {
+      const { paymentId } = req.params;
+      const { amount, reason } = req.body;
+      const result = await this.financialService.refundPayment(paymentId, amount, reason);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      res.status(400).json({ success: false, error: (error as Error).message });
+    }
+  }
+
+  async getPaymentHistory(req: Request, res: Response) {
+    try {
+      const { invoiceId, clientId, startDate, endDate } = req.query;
+      const history = await this.financialService.getPaymentHistory(
+        invoiceId as string,
+        clientId as string,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      res.json({ success: true, data: history });
+    } catch (error) {
+      res.status(400).json({ success: false, error: (error as Error).message });
+    }
+  }
+
+  async getAvailablePaymentMethods(req: Request, res: Response) {
+    try {
+      const methods = await this.financialService.getPaymentMethods();
+      res.json({ success: true, data: methods });
+    } catch (error) {
+      res.status(400).json({ success: false, error: (error as Error).message });
+    }
+  }
 }

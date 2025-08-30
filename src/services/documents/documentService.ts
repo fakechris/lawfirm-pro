@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { DocumentRepository } from '../repositories/documentRepository';
 import { storageService } from '../utils/storage';
 import { DocumentValidator } from '../utils/validation';
+import { ocrService } from '../utils/document-processing/ocrService';
 import { 
   DocumentUploadInput,
   DocumentUpdateInput,
@@ -111,13 +112,42 @@ export class DocumentService {
         changeDescription: 'Initial version'
       });
 
+      // Process OCR for supported file types
+      let extractedText = '';
+      if (await ocrService.isFormatSupported(mimeType)) {
+        try {
+          const ocrResult = await ocrService.processDocument(storageResult.filePath, {
+            languages: ['eng', 'chi_sim'],
+            autoRotate: true,
+            preserveFormatting: true,
+          });
+          
+          extractedText = ocrResult.text;
+          
+          // Update document with extracted text
+          await this.documentRepository.update(document.id, {
+            extractedText,
+            metadata: {
+              ...options.metadata,
+              ocrConfidence: ocrResult.confidence,
+              ocrLanguage: ocrResult.language,
+              ocrProcessingTime: ocrResult.processingTime,
+            }
+          });
+        } catch (error) {
+          console.error('OCR processing failed:', error);
+          // Don't fail the upload if OCR fails
+        }
+      }
+
       return {
         success: true,
         filePath: storageResult.filePath,
         filename: storageResult.filename,
         size: storageResult.size,
         mimeType,
-        checksum
+        checksum,
+        extractedText
       };
     } catch (error) {
       return {
@@ -317,5 +347,192 @@ export class DocumentService {
         temp: { used: 0, fileCount: 0 }
       }
     };
+  }
+
+  // OCR-specific methods
+  async reprocessOCR(documentId: string): Promise<{
+    success: boolean;
+    extractedText?: string;
+    confidence?: number;
+    error?: string;
+  }> {
+    try {
+      const document = await this.getDocument(documentId);
+      if (!document) {
+        return { success: false, error: 'Document not found' };
+      }
+
+      if (!(await ocrService.isFormatSupported(document.mimeType))) {
+        return { success: false, error: 'Unsupported format for OCR' };
+      }
+
+      const ocrResult = await ocrService.processDocument(document.path, {
+        languages: ['eng', 'chi_sim'],
+        autoRotate: true,
+        preserveFormatting: true,
+      });
+
+      await this.documentRepository.update(documentId, {
+        extractedText: ocrResult.text,
+        metadata: {
+          ...document.metadata,
+          ocrConfidence: ocrResult.confidence,
+          ocrLanguage: ocrResult.language,
+          ocrProcessingTime: ocrResult.processingTime,
+          lastOCRTimestamp: new Date().toISOString(),
+        }
+      });
+
+      return {
+        success: true,
+        extractedText: ocrResult.text,
+        confidence: ocrResult.confidence,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  async searchByOCRText(query: string, options?: {
+    caseId?: string;
+    category?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DocumentWithDetails[]> {
+    const { caseId, category, limit = 20, offset = 0 } = options || {};
+
+    const where: any = {
+      extractedText: {
+        contains: query,
+        mode: 'insensitive'
+      }
+    };
+
+    if (caseId) where.caseId = caseId;
+    if (category) where.category = category;
+
+    return await this.prisma.document.findMany({
+      where,
+      include: {
+        case: true,
+        versions: {
+          orderBy: { versionNumber: 'desc' },
+          take: 1
+        },
+        _count: {
+          select: {
+            versions: true
+          }
+        }
+      },
+      orderBy: { uploadedAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
+  }
+
+  async getOCRStats(): Promise<{
+    totalDocuments: number;
+    documentsWithOCR: number;
+    averageConfidence: number;
+    byLanguage: Record<string, number>;
+    processingTimes: {
+      min: number;
+      max: number;
+      average: number;
+    };
+  }> {
+    const documents = await this.prisma.document.findMany({
+      where: {
+        extractedText: {
+          not: ''
+        }
+      },
+      select: {
+        metadata: true,
+        extractedText: true
+      }
+    });
+
+    const totalDocuments = await this.prisma.document.count();
+    const documentsWithOCR = documents.length;
+
+    let totalConfidence = 0;
+    let totalProcessingTime = 0;
+    const languageCounts: Record<string, number> = {};
+    const processingTimes: number[] = [];
+
+    documents.forEach(doc => {
+      const metadata = doc.metadata as any;
+      if (metadata.ocrConfidence) {
+        totalConfidence += metadata.ocrConfidence;
+      }
+      if (metadata.ocrProcessingTime) {
+        processingTimes.push(metadata.ocrProcessingTime);
+        totalProcessingTime += metadata.ocrProcessingTime;
+      }
+      if (metadata.ocrLanguage) {
+        languageCounts[metadata.ocrLanguage] = (languageCounts[metadata.ocrLanguage] || 0) + 1;
+      }
+    });
+
+    const averageConfidence = documentsWithOCR > 0 ? totalConfidence / documentsWithOCR : 0;
+
+    return {
+      totalDocuments,
+      documentsWithOCR,
+      averageConfidence,
+      byLanguage: languageCounts,
+      processingTimes: {
+        min: processingTimes.length > 0 ? Math.min(...processingTimes) : 0,
+        max: processingTimes.length > 0 ? Math.max(...processingTimes) : 0,
+        average: processingTimes.length > 0 ? totalProcessingTime / processingTimes.length : 0,
+      }
+    };
+  }
+
+  async validateOCRQuality(documentId: string): Promise<{
+    isValid: boolean;
+    issues: string[];
+    suggestions: string[];
+  }> {
+    try {
+      const document = await this.getDocument(documentId);
+      if (!document || !document.extractedText) {
+        return {
+          isValid: false,
+          issues: ['No OCR text available'],
+          suggestions: ['Run OCR processing first']
+        };
+      }
+
+      const metadata = document.metadata as any;
+      const confidence = metadata.ocrConfidence || 0;
+
+      // Create a mock OCR result for validation
+      const ocrResult = {
+        text: document.extractedText,
+        confidence,
+        language: metadata.ocrLanguage || 'eng',
+        pages: [{
+          pageNumber: 1,
+          text: document.extractedText,
+          confidence,
+          blocks: []
+        }],
+        processingTime: metadata.ocrProcessingTime || 0
+      };
+
+      return await ocrService.validateOCRQuality(ocrResult);
+    } catch (error) {
+      return {
+        isValid: false,
+        issues: ['Validation failed'],
+        suggestions: ['Try reprocessing OCR']
+      };
+    }
   }
 }

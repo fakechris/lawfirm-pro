@@ -37,7 +37,8 @@
     "express-session": "^1.17.3",
     "connect-redis": "^7.1.0",
     "redis": "^4.6.11",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "tesseract.js": "^5.0.5"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -50,6 +51,7 @@
     "@types/nodemailer": "^6.4.14",
     "@types/uuid": "^9.0.7",
     "@types/ws": "^8.5.10",
+    "@types/tesseract.js": "^2.1.6",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "eslint": "^8.55.0",

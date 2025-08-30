@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -25,6 +26,11 @@ model User {
   attorneyProfile AttorneyProfile?
   assignedTasks  Task[] @relation("TaskAssignee")
   createdTasks   Task[] @relation("TaskCreator")
+  comments       DocumentComment[]
+  sharedDocuments DocumentShare[] @relation("SharedByUser")
+  receivedShares DocumentShare[] @relation("SharedWithUser")
+  auditLogs      AuditLog[]
+  evidenceItems  EvidenceItem[]
 
   @@map("users")
 }
@@ -95,14 +101,26 @@ model Document {
   uploadedBy    String
   uploadedAt    DateTime          @default(now())
   isConfidential Boolean          @default(false)
+  isTemplate    Boolean          @default(false)
   category      DocumentCategory?
   status        DocumentStatus    @default(ACTIVE)
   description   String?
   tags          String[]
   metadata      Json?
+  checksum      String?
+  version       Int               @default(1)
+  thumbnailPath String?
+  extractedText String?
+  searchVector  Vector?
   
   // Relations
   case          Case?             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  versions      DocumentVersion[]
+  template      DocumentTemplate? @relation("DocumentTemplateSource")
+  workflow      DocumentWorkflow?
+  comments      DocumentComment[]
+  shares        DocumentShare[]
+  auditLogs     AuditLog[]
 
   @@map("documents")
 }
@@ -197,4 +215,495 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+// Financial Models
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique
+  caseId          String?
+  clientId        String
+  userId          String
+  status          InvoiceStatus @default(DRAFT)
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime
+  subtotal        Float
+  taxRate         Float         @default(0.06)
+  taxAmount       Float
+  total           Float
+  currency        String        @default("CNY")
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  case     Case?      @relation(fields: [caseId], references: [id])
+  client   ClientProfile @relation(fields: [clientId], references: [id])
+  user     User       @relation(fields: [userId], references: [id])
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String           @id @default(cuid())
+  invoiceId   String
+  type        InvoiceItemType
+  description String
+  quantity    Float            @default(1)
+  unitPrice   Float
+  amount      Float
+  taxRate     Float            @default(0.06)
+  taxAmount   Float
+  total       Float
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model BillingNode {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  caseId      String
+  phase       String
+  order       Int
+  amount      Float
+  dueDate     DateTime?
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("billing_nodes")
+}
+
+model FeeStructure {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  caseType    String
+  feeType     FeeType
+  rate        Float?
+  percentage  Float?
+  minimum     Float?
+  maximum     Float?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("fee_structures")
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  caseId      String
+  userId      String
+  description String
+  hours       Float
+  rate        Float
+  amount      Float
+  date        DateTime
+  isBilled    Boolean  @default(false)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("time_entries")
+}
+
+model Expense {
+  id          String           @id @default(cuid())
+  caseId      String?
+  userId      String
+  category    ExpenseCategory
+  description String
+  amount      Float
+  date        DateTime
+  isBillable  Boolean          @default(true)
+  isBilled    Boolean          @default(false)
+  receiptUrl  String?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  case Case? @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model Payment {
+  id            String         @id @default(cuid())
+  invoiceId     String
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus  @default(PENDING)
+  reference     String?
+  transactionId String?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model TrustAccount {
+  id          String   @id @default(cuid())
+  clientId    String
+  caseId      String?
+  balance     Float    @default(0)
+  currency    String   @default("CNY")
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  client   ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  case     Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  transactions TrustTransaction[]
+
+  @@map("trust_accounts")
+}
+
+model TrustTransaction {
+  id             String               @id @default(cuid())
+  trustAccountId String
+  type           TrustTransactionType
+  amount         Float
+  description    String
+  reference      String?
+  status         String               @default("pending")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  // Relations
+  trustAccount TrustAccount @relation(fields: [trustAccountId], references: [id], onDelete: Cascade)
+
+  @@map("trust_transactions")
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  gateway   String
+  payload   String
+  status    String   @default("PENDING")
+  error     String?
+  retryCount Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("webhook_logs")
+}
+
+// Financial Enums
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum InvoiceItemType {
+  TIME_ENTRY
+  EXPENSE
+  FEE
+  DISCOUNT
+  TAX
+  BILLING_NODE
+}
+
+enum FeeType {
+  HOURLY
+  FLAT
+  CONTINGENCY
+  RETAINER
+  HYBRID
+}
+
+enum ExpenseCategory {
+  TRAVEL
+  MEALS
+  ACCOMMODATION
+  SUPPLIES
+  POSTAGE
+  COURT_FEES
+  EXPERT_WITNESS
+  RESEARCH
+  OTHER
+}
+
+enum PaymentMethod {
+  ALIPAY
+  WECHAT_PAY
+  BANK_TRANSFER
+  CASH
+  CREDIT_CARD
+  CHECK
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum TrustTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  FEE_PAYMENT
+  REFUND
+}
+
+// Document Management Models
+model DocumentVersion {
+  id               String   @id @default(cuid())
+  documentId       String
+  versionNumber    Int
+  filePath         String
+  fileSize         Int
+  checksum         String
+  changeDescription String?
+  createdAt        DateTime @default(now())
+  createdBy        String
+  
+  // Relations
+  document         Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNumber])
+  @@map("document_versions")
+}
+
+model DocumentTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  category         DocumentCategory?
+  filePath         String
+  variableSchema   Json
+  isPublic         Boolean  @default(false)
+  createdBy        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  usageCount       Int      @default(0)
+  
+  // Relations
+  generatedDocuments Document[] @relation("DocumentTemplateSource")
+  
+  @@map("document_templates")
+}
+
+model DocumentComment {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  content    String
+  position   Json?    // For positioning within document
+  isResolved Boolean  @default(false)
+  parentId   String?  // For threaded comments
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+  parent     DocumentComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies    DocumentComment[] @relation("CommentReplies")
+  
+  @@map("document_comments")
+}
+
+model DocumentShare {
+  id         String           @id @default(cuid())
+  documentId String
+  sharedBy   String
+  sharedWith String
+  permission DocumentSharePermission
+  expiresAt  DateTime?
+  accessKey  String?          @unique
+  message    String?
+  createdAt  DateTime         @default(now())
+  accessedAt DateTime?
+  
+  // Relations
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sharedByUser User   @relation("SharedByUser", fields: [sharedBy], references: [id])
+  sharedWithUser User @relation("SharedWithUser", fields: [sharedWith], references: [id])
+  
+  @@map("document_shares")
+}
+
+model DocumentWorkflow {
+  id          String   @id @default(cuid())
+  documentId  String   @unique
+  status      WorkflowStatus
+  currentStep Int      @default(1)
+  startedBy   String
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  // Relations
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  steps       DocumentWorkflowStep[]
+  
+  @@map("document_workflows")
+}
+
+model DocumentWorkflowStep {
+  id          String              @id @default(cuid())
+  workflowId  String
+  stepNumber  Int
+  name        String
+  description String?
+  assignedTo  String?
+  status      WorkflowStepStatus  @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  action      String?
+  notes       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  // Relations
+  workflow    DocumentWorkflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  @@unique([workflowId, stepNumber])
+  @@map("document_workflow_steps")
+}
+
+model EvidenceItem {
+  id               String           @id @default(cuid())
+  caseId           String
+  title            String
+  description      String?
+  type             EvidenceType
+  status           EvidenceStatus   @default(ACTIVE)
+  location         String?
+  collectedBy      String
+  collectedAt      DateTime         @default(now())
+  fileSize         Int?
+  mimeType         String?
+  filePath         String?
+  checksum         String?
+  tags             String[]
+  metadata         Json?
+  
+  // Relations
+  case             Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  chainOfCustody   EvidenceChain[]
+  document         Document?        @relation(fields: [id], references: [id])
+  
+  @@map("evidence_items")
+}
+
+model EvidenceChain {
+  id            String   @id @default(cuid())
+  evidenceId    String
+  action        String
+  performedBy   String
+  performedAt   DateTime @default(now())
+  location      String?
+  notes         String?
+  signature     String?
+  
+  // Relations
+  evidence      EvidenceItem @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  
+  @@map("evidence_chain")
+}
+
+model SearchIndex {
+  id          String   @id @default(cuid())
+  entityId    String
+  entityType  String
+  content     String
+  metadata    Json?
+  vector      Vector?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("search_index")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  entityType  String
+  entityId    String
+  userId      String
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  
+  @@map("audit_logs")
+}
+
+// Document Management Enums
+enum DocumentSharePermission {
+  VIEW
+  COMMENT
+  EDIT
+  DOWNLOAD
+}
+
+enum WorkflowStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  REJECTED
+}
+
+enum EvidenceType {
+  PHYSICAL
+  DIGITAL
+  DOCUMENT
+  PHOTO
+  VIDEO
+  AUDIO
+  TESTIMONY
+  EXPERT_REPORT
+}
+
+enum EvidenceStatus {
+  ACTIVE
+  ARCHIVED
+  DESTROYED
+  COMPROMISED
 }

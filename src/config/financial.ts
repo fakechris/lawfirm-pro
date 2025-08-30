@@ -81,19 +81,62 @@ export const financialConfig = {
         appId: process.env.ALIPAY_APP_ID,
         privateKey: process.env.ALIPAY_PRIVATE_KEY,
         publicKey: process.env.ALIPAY_PUBLIC_KEY,
+        sandbox: process.env.NODE_ENV === 'development',
+        notifyUrl: process.env.ALIPAY_NOTIFY_URL || '/api/payments/alipay/notify',
+        returnUrl: process.env.ALIPAY_RETURN_URL || '/api/payments/alipay/return',
+        charset: 'UTF-8',
+        signType: 'RSA2',
+        version: '1.0',
       },
       wechat: {
         enabled: true,
         appId: process.env.WECHAT_APP_ID,
         mchId: process.env.WECHAT_MCH_ID,
         apiKey: process.env.WECHAT_API_KEY,
+        sandbox: process.env.NODE_ENV === 'development',
+        notifyUrl: process.env.WECHAT_NOTIFY_URL || '/api/payments/wechat/notify',
+        tradeType: 'NATIVE', // NATIVE, JSAPI, APP, MWEB
+        spbillCreateIp: '127.0.0.1',
+        certPath: process.env.WECHAT_CERT_PATH,
+        keyPath: process.env.WECHAT_KEY_PATH,
       },
       bank: {
         enabled: true,
         accountNumber: process.env.BANK_ACCOUNT_NUMBER,
         bankName: process.env.BANK_NAME,
         swiftCode: process.env.BANK_SWIFT_CODE,
+        accountHolder: process.env.BANK_ACCOUNT_HOLDER,
+        bankAddress: process.env.BANK_ADDRESS,
       },
+    },
+    // Payment processing settings
+    processing: {
+      retryAttempts: 3,
+      retryDelay: 5000, // 5 seconds
+      timeout: 30000, // 30 seconds
+      maxAmount: 1000000, // 1M CNY max per transaction
+      minAmount: 1, // 1 CNY minimum
+      currency: 'CNY',
+    },
+    // Security settings
+    security: {
+      require3DS: true,
+      fraudDetection: true,
+      ipWhitelist: [],
+      ipBlacklist: [],
+      rateLimiting: {
+        enabled: true,
+        maxRequests: 100,
+        windowMs: 900000, // 15 minutes
+      },
+    },
+    // Webhook settings
+    webhooks: {
+      enabled: true,
+      secret: process.env.PAYMENT_WEBHOOK_SECRET,
+      retryFailed: true,
+      maxRetries: 5,
+      timeout: 10000, // 10 seconds
     },
   },
   

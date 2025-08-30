@@ -34,6 +34,13 @@ router.post('/payments', financialController.createPayment.bind(financialControl
 router.put('/payments/:id/status', financialController.updatePaymentStatus.bind(financialController));
 router.get('/payments/invoice/:invoiceId', financialController.getPaymentsByInvoice.bind(financialController));
 
+// Payment Processing routes
+router.post('/payments/process', financialController.processPayment.bind(financialController));
+router.get('/payments/:paymentId/status', financialController.checkPaymentStatus.bind(financialController));
+router.post('/payments/:paymentId/refund', financialController.refundPayment.bind(financialController));
+router.get('/payments/history', financialController.getPaymentHistory.bind(financialController));
+router.get('/payments/methods/available', financialController.getAvailablePaymentMethods.bind(financialController));
+
 // Trust Account routes
 router.post('/trust-accounts', financialController.createTrustAccount.bind(financialController));
 router.get('/trust-accounts/client/:clientId', financialController.getTrustAccountsByClient.bind(financialController));

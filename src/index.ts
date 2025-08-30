@@ -12,6 +12,8 @@ import authRoutes from './routes/auth';
 import caseRoutes from './routes/case';
 import messageRoutes from './routes/message';
 import documentRoutes from './routes/document';
+import financialRoutes from './routes/financial';
+import webhookRoutes from './routes/webhooks';
 
 // Import client portal routes
 import clientAuthRoutes from './client/routes/auth';
@@ -84,6 +86,8 @@ class App {
     this.app.use('/api/cases', caseRoutes);
     this.app.use('/api/messages', messageRoutes);
     this.app.use('/api/documents', documentRoutes);
+    this.app.use('/api/financial', financialRoutes);
+    this.app.use('/api/webhooks', webhookRoutes);
 
     // Client portal routes
     this.app.use('/api/client/auth', clientAuthRoutes);

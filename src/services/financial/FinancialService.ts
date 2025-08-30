@@ -16,12 +16,15 @@ import {
   PaymentStatus,
   TrustTransactionType
 } from '../models/financial';
+import { PaymentGatewayService } from './PaymentGatewayService';
 
 export class FinancialService {
   private prisma: PrismaClient;
+  private paymentGatewayService: PaymentGatewayService;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
+    this.paymentGatewayService = new PaymentGatewayService(prisma);
   }
 
   // Billing Node Management
@@ -498,5 +501,235 @@ export class FinancialService {
       default:
         throw new Error(`Unsupported fee type: ${feeType}`);
     }
+  }
+
+  // Payment Processing Methods
+  async processPayment(data: {
+    invoiceId: string;
+    amount: number;
+    method: PaymentMethod;
+    clientInfo: {
+      name: string;
+      email: string;
+      phone?: string;
+    };
+    description?: string;
+  }) {
+    // Get invoice details
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: data.invoiceId },
+      include: { client: true, case: true },
+    });
+
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    // Check if payment amount is valid
+    if (data.amount <= 0) {
+      throw new Error('Payment amount must be greater than 0');
+    }
+
+    // Check if payment amount exceeds invoice total
+    const totalPaid = await this.getTotalPaidAmount(data.invoiceId);
+    if (totalPaid + data.amount > invoice.total) {
+      throw new Error('Payment amount exceeds invoice total');
+    }
+
+    // Initialize payment with gateway
+    const paymentRequest = {
+      amount: data.amount,
+      currency: invoice.currency,
+      description: data.description || `Payment for invoice ${invoice.invoiceNumber}`,
+      orderId: `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      clientInfo: data.clientInfo,
+    };
+
+    const gatewayResponse = await this.paymentGatewayService.initializePayment(
+      data.method,
+      paymentRequest
+    );
+
+    if (!gatewayResponse.success) {
+      throw new Error(`Payment initialization failed: ${gatewayResponse.error}`);
+    }
+
+    // Create payment record
+    const payment = await this.prisma.payment.create({
+      data: {
+        invoiceId: data.invoiceId,
+        amount: data.amount,
+        method: data.method,
+        status: PaymentStatus.PENDING,
+        transactionId: gatewayResponse.transactionId,
+        reference: JSON.stringify(gatewayResponse),
+      },
+    });
+
+    return {
+      payment,
+      gatewayResponse,
+    };
+  }
+
+  async checkPaymentStatus(paymentId: string): Promise<PaymentStatus> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new Error('Payment not found');
+    }
+
+    if (!payment.transactionId) {
+      return payment.status;
+    }
+
+    try {
+      const gatewayStatus = await this.paymentGatewayService.checkPaymentStatus(
+        payment.method,
+        payment.transactionId
+      );
+
+      // Update payment status if different
+      if (gatewayStatus !== payment.status) {
+        await this.prisma.payment.update({
+          where: { id: paymentId },
+          data: { status: gatewayStatus as PaymentStatus },
+        });
+
+        // Update invoice status if payment is completed
+        if (gatewayStatus === PaymentStatus.COMPLETED) {
+          await this.updateInvoicePaymentStatus(payment.invoiceId);
+        }
+      }
+
+      return gatewayStatus as PaymentStatus;
+    } catch (error) {
+      console.error('Failed to check payment status:', error);
+      return payment.status;
+    }
+  }
+
+  async refundPayment(paymentId: string, amount?: number, reason?: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { invoice: true },
+    });
+
+    if (!payment) {
+      throw new Error('Payment not found');
+    }
+
+    if (payment.status !== PaymentStatus.COMPLETED) {
+      throw new Error('Only completed payments can be refunded');
+    }
+
+    const refundAmount = amount || payment.amount;
+    if (refundAmount > payment.amount) {
+      throw new Error('Refund amount cannot exceed payment amount');
+    }
+
+    try {
+      const refundResponse = await this.paymentGatewayService.refundPayment(
+        payment.method,
+        payment.transactionId!,
+        refundAmount,
+        reason
+      );
+
+      if (refundResponse.success) {
+        // Update payment status to refunded
+        await this.prisma.payment.update({
+          where: { id: paymentId },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+
+        // Update invoice status
+        await this.updateInvoicePaymentStatus(payment.invoiceId);
+      }
+
+      return refundResponse;
+    } catch (error) {
+      throw new Error(`Refund failed: ${error.message}`);
+    }
+  }
+
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    const config = await import('../../config/financial').then(m => m.getPaymentConfig());
+    const enabledMethods: PaymentMethod[] = [];
+
+    if (config.supportedGateways.alipay.enabled) {
+      enabledMethods.push(PaymentMethod.ALIPAY);
+    }
+    if (config.supportedGateways.wechat.enabled) {
+      enabledMethods.push(PaymentMethod.WECHAT_PAY);
+    }
+    if (config.supportedGateways.bank.enabled) {
+      enabledMethods.push(PaymentMethod.BANK_TRANSFER);
+    }
+
+    return enabledMethods;
+  }
+
+  async getPaymentHistory(invoiceId?: string, clientId?: string, startDate?: Date, endDate?: Date) {
+    const where: any = {};
+    if (invoiceId) where.invoiceId = invoiceId;
+    if (clientId) where.invoice = { clientId };
+    if (startDate && endDate) {
+      where.createdAt = { gte: startDate, lte: endDate };
+    }
+
+    return this.prisma.payment.findMany({
+      where,
+      include: {
+        invoice: {
+          include: {
+            client: true,
+            case: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // Helper methods
+  private async getTotalPaidAmount(invoiceId: string): Promise<number> {
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        invoiceId,
+        status: PaymentStatus.COMPLETED,
+      },
+    });
+
+    return payments.reduce((sum, payment) => sum + payment.amount, 0);
+  }
+
+  private async updateInvoicePaymentStatus(invoiceId: string): Promise<void> {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: { payments: true },
+    });
+
+    if (!invoice) return;
+
+    const totalPaid = invoice.payments
+      .filter(p => p.status === PaymentStatus.COMPLETED)
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    let status: InvoiceStatus;
+    if (totalPaid >= invoice.total) {
+      status = InvoiceStatus.PAID;
+    } else if (totalPaid > 0) {
+      status = InvoiceStatus.PARTIALLY_PAID;
+    } else {
+      status = InvoiceStatus.UNPAID;
+    }
+
+    await this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { status },
+    });
   }
 }
