@@ -1,0 +1,182 @@
+# Dependencies
+node_modules/
+bower_components/
+jspm_packages/
+
+# Production builds
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+.fusebox/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.phpunit.result.cache
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnpm-store/
+
+# TypeScript
+*.tsbuildinfo
+.tsc-cache/
+
+# Optional npm cache directory
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Gatsby files
+.cache/
+public/
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt/
+dist/
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# Local configuration
+local.config
+config.local.js
+settings.local.json
