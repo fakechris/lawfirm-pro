@@ -4,7 +4,7 @@ status: backlog
 created: 2025-08-30T10:18:07Z
 progress: 0%
 prd: .claude/prds/law-firm-pro.md
-github: [Will be updated when synced to GitHub]
+github: https://github.com/fakechris/lawfirm-pro/issues/1
 ---
 
 # Epic: Law Firm Pro
@@ -195,20 +195,17 @@ Law Firm Pro is a comprehensive case management system for small Chinese law fir
 5. User authentication and authorization system
 
 ## Tasks Created
-- [ ] 001.md - Core Architecture: Database design, API structure, authentication system (parallel: true)
-- [ ] 002.md - Case Management: 5-phase lifecycle, state machine, case types support (parallel: true)
-- [ ] 003.md - Task System: Role-based assignment, workflow engine, progress tracking (parallel: true)
-- [ ] 004.md - Financial Management: Stage-based billing, fee calculations, expense tracking (parallel: true)
-- [ ] 005.md - Document Management: Templates, version control, evidence organization (parallel: true)
-- [ ] 006.md - User Management: Role-based access control, permissions, user profiles (parallel: true)
-- [ ] 007.md - Client Portal: Case status, communication tools, transparency features (parallel: true)
-- [ ] 008.md - Integration Layer: External APIs, court systems, payment processors (parallel: true)
-- [ ] 009.md - Knowledge Base: Experience capture, best practices, training resources (parallel: true)
-- [ ] 010.md - Deployment & Operations: Infrastructure, monitoring, backup strategies (parallel: true)
+- [ ] #10 - Knowledge Base System (parallel: true)
+- [ ] #11 - Deployment & Operations Infrastructure (parallel: true)
+- [ ] #2 - Core Architecture: Database design, API structure, authentication system (parallel: true)
+- [ ] #3 - Case Management: 5-phase lifecycle, state machine, case types support (parallel: true)
+- [ ] #4 - Task System: Role-based assignment, workflow engine, progress tracking (parallel: true)
+- [ ] #5 - Financial Management System (parallel: true)
+- [ ] #6 - Document Management System (parallel: true)
+- [ ] #7 - User Management System (parallel: true)
+- [ ] #8 - Client Portal Implementation (parallel: true)
+- [ ] #9 - Integration Layer Development (parallel: true)
 
-Total tasks: 10
-Parallel tasks: 10
+Total tasks:       10
+Parallel tasks:       10
 Sequential tasks: 0
-Estimated total effort: 930 hours
-
-This epic provides a comprehensive technical implementation plan for Law Firm Pro, addressing all PRD requirements while maintaining focus on delivering value to small Chinese law firms through standardized, efficient legal practice management.
