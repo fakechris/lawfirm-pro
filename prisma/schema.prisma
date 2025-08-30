@@ -1,0 +1,518 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户角色枚举
+enum UserRole {
+  ADMIN
+  LAWYER
+  PARALEGAL
+  ASSISTANT
+  ARCHIVIST
+}
+
+// 用户状态枚举
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// 案件类型枚举
+enum CaseType {
+  LABOR_DISPUTE           // 劳动争议
+  MEDICAL_MALPRACTICE     // 医疗纠纷
+  CRIMINAL_DEFENSE        // 刑事辩护
+  DIVORCE_FAMILY          // 离婚家事
+  INHERITANCE_DISPUTE     // 继承纠纷
+  CONTRACT_DISPUTE        // 合同纠纷
+  ADMINISTRATIVE_CASE     // 行政诉讼
+  DEMOLITION_CASE         // 拆迁类案件
+  SPECIAL_MATTER          // 特殊事项管理
+}
+
+// 案件阶段枚举
+enum CasePhase {
+  INTAKE_RISK_ASSESSMENT   // 接案、风险评估与策略制定
+  PRE_PROCEEDING_PREP      // 诉前准备与立案
+  FORMAL_PROCEEDINGS       // 正式程序（庭审/听证/仲裁）
+  RESOLUTION_POST          // 解决方案与后续行动
+  CLOSURE_REVIEW           // 结案、审查与归档
+}
+
+// 案件状态枚举
+enum CaseStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+// 任务状态枚举
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+// 任务优先级枚举
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// 文档类型枚举
+enum DocumentType {
+  LEGAL_DOCUMENT
+  EVIDENCE
+  CONTRACT
+  CORRESPONDENCE
+  COURT_FILING
+  RESEARCH
+  TEMPLATE
+  OTHER
+}
+
+// 文档状态枚举
+enum DocumentStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  SIGNED
+  FILED
+  ARCHIVED
+}
+
+// 计费方式枚举
+enum BillingMethod {
+  FIXED_FEE              // 计件收费
+  HOURLY                 // 计时收费
+  CONTINGENCY            // 风险代理
+  PERCENTAGE             // 按标的额比例收费
+}
+
+// 费用状态枚举
+enum FeeStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+// 支付方式枚举
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  WECHAT_PAY
+  ALIPAY
+  CREDIT_CARD
+}
+
+// 用户表
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  phone       String?
+  avatar      String?
+  role        UserRole @default(LAWYER)
+  status      UserStatus @default(ACTIVE)
+  
+  // 律师助理子类型
+  assistantType String? // RESEARCH_ASSISTANT, DOCUMENT_ASSISTANT, COORDINATION_ASSISTANT
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  cases       Case[]
+  tasks       Task[]
+  documents   Document[]
+  timeEntries TimeEntry[]
+  notes       Note[]
+  
+  @@map("users")
+}
+
+// 客户表
+model Client {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  address     String?
+  company     String?
+  idNumber    String?  // 身份证号或统一社会信用代码
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  cases       Case[]
+  documents   Document[]
+  contacts    Contact[]
+  fees        Fee[]
+  
+  @@map("clients")
+}
+
+// 案件表
+model Case {
+  id          String     @id @default(cuid())
+  caseNumber  String     @unique
+  title       String
+  description String?
+  caseType    CaseType
+  phase       CasePhase  @default(INTAKE_RISK_ASSESSMENT)
+  status      CaseStatus @default(DRAFT)
+  
+  // 时间信息
+  startDate   DateTime
+  expectedEndDate DateTime?
+  actualEndDate DateTime?
+  
+  // 金额信息
+  claimAmount Float?     // 诉讼标的额
+  settlementAmount Float? // 和解金额
+  
+  // 关联字段
+  clientId    String
+  leadLawyerId String
+  assignedAt  DateTime  @default(now())
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // 关联关系
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  leadLawyer  User      @relation("LeadLawyer", fields: [leadLawyerId], references: [id], onDelete: Restrict)
+  teamMembers CaseTeamMember[]
+  tasks       Task[]
+  documents   Document[]
+  fees        Fee[]
+  timeEntries TimeEntry[]
+  notes       Note[]
+  phases      CasePhaseHistory[]
+  
+  @@map("cases")
+}
+
+// 案件团队成员表
+model CaseTeamMember {
+  id       String   @id @default(cuid())
+  caseId   String
+  userId   String
+  role     String   // LEAD_LAWYER, PARTICIPATING_LAWYER, RESEARCH_ASSISTANT, DOCUMENT_ASSISTANT, COORDINATION_ASSISTANT, ARCHIVIST
+  joinedAt DateTime @default(now())
+  leftAt   DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // 关联关系
+  case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([caseId, userId])
+  @@map("case_team_members")
+}
+
+// 案件阶段历史表
+model CasePhaseHistory {
+  id        String   @id @default(cuid())
+  caseId    String
+  phase     CasePhase
+  startDate DateTime
+  endDate   DateTime?
+  notes     String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // 关联关系
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  @@map("case_phase_history")
+}
+
+// 任务表
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  
+  // 时间信息
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // 关联字段
+  caseId      String?
+  assigneeId  String?
+  createdById String
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // 关联关系
+  case        Case?       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy   User        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  subtasks    SubTask[]
+  dependencies TaskDependency[]
+  dependents   TaskDependency[]
+  
+  @@map("tasks")
+}
+
+// 子任务表
+model SubTask {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  
+  // 时间信息
+  dueDate     DateTime?
+  completedAt DateTime?
+  
+  // 关联字段
+  taskId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  @@map("subtasks")
+}
+
+// 任务依赖表
+model TaskDependency {
+  id           String   @id @default(cuid())
+  taskId       String
+  dependsOnId  String
+  dependencyType String  // BLOCKS, RELATED_TO
+  
+  createdAt    DateTime @default(now())
+  
+  // 关联关系
+  task         Task     @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn    Task     @relation("TaskDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  
+  @@unique([taskId, dependsOnId])
+  @@map("task_dependencies")
+}
+
+// 文档表
+model Document {
+  id          String        @id @default(cuid())
+  filename    String
+  originalName String
+  path        String
+  size        Int
+  mimeType    String
+  type        DocumentType
+  status      DocumentStatus @default(DRAFT)
+  
+  // 版本控制
+  version     Int           @default(1)
+  parentId    String?       // 父文档ID（用于版本控制）
+  isLatest    Boolean       @default(true)
+  
+  // 关联字段
+  caseId      String?
+  clientId    String?
+  uploadedById String
+  
+  // 文档内容
+  content     String?
+  extractedText String?    // OCR提取的文本
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // 关联关系
+  case        Case?         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client      Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedBy  User          @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  parent      Document?     @relation("DocumentParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Document[]    @relation("DocumentParent")
+  versions    DocumentVersion[]
+  approvals   DocumentApproval[]
+  
+  @@map("documents")
+}
+
+// 文档版本表
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     Int
+  changes     String?
+  createdBy  String
+  createdAt   DateTime @default(now())
+  
+  // 关联关系
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@unique([documentId, version])
+  @@map("document_versions")
+}
+
+// 文档审批表
+model DocumentApproval {
+  id          String           @id @default(cuid())
+  documentId  String
+  approverId  String
+  status      String           // PENDING, APPROVED, REJECTED
+  comments    String?
+  approvedAt  DateTime?
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // 关联关系
+  document    Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  approver    User             @relation(fields: [approverId], references: [id], onDelete: Restrict)
+  
+  @@map("document_approvals")
+}
+
+// 联系人表
+model Contact {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  position    String?
+  company     String?
+  relationship String?  // 与客户的关系
+  
+  // 关联字段
+  clientId    String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("contacts")
+}
+
+// 费用表
+model Fee {
+  id            String       @id @default(cuid())
+  description   String
+  amount        Float
+  method        BillingMethod
+  status        FeeStatus    @default(DRAFT)
+  
+  // 时间信息
+  dueDate       DateTime
+  paidDate      DateTime?
+  
+  // 关联字段
+  caseId        String?
+  clientId      String
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // 关联关系
+  case          Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+  
+  @@map("fees")
+}
+
+// 支付表
+model Payment {
+  id          String        @id @default(cuid())
+  amount      Float
+  method      PaymentMethod
+  transactionId String?
+  notes       String?
+  
+  // 关联字段
+  feeId       String
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // 关联关系
+  fee         Fee           @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
+}
+
+// 时间记录表
+model TimeEntry {
+  id          String   @id @default(cuid())
+  description String
+  hours       Float
+  rate        Float
+  
+  // 时间信息
+  date        DateTime
+  startTime   DateTime?
+  endTime     DateTime?
+  
+  // 关联字段
+  caseId      String?
+  userId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("time_entries")
+}
+
+// 笔记表
+model Note {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  isPrivate   Boolean  @default(false)
+  
+  // 关联字段
+  caseId      String?
+  userId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notes")
+}
