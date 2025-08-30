@@ -1,0 +1,611 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clientProfile ClientProfile?
+  attorneyProfile AttorneyProfile?
+  messages       Message[]
+  documentAccess DocumentAccess[]
+  appointments   Appointment[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+model ClientProfile {
+  id        String @id @default(cuid())
+  userId    String @unique
+  phone     String?
+  address   String?
+  company   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cases    Case[]         @relation("ClientCases")
+  invoices Invoice[]
+
+  @@map("client_profiles")
+}
+
+model AttorneyProfile {
+  id          String @id @default(cuid())
+  userId      String @unique
+  licenseNumber String
+  specialization String
+  experience  Int?
+  bio         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cases  Case[] @relation("AttorneyCases")
+  
+  @@map("attorney_profiles")
+}
+
+model Case {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  caseType    CaseType
+  status      CaseStatus
+  phase       CasePhase
+  clientId    String
+  attorneyId  String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  closedAt    DateTime?
+  
+  // Relations
+  client      ClientProfile @relation("ClientCases", fields: [clientId], references: [id])
+  attorney    AttorneyProfile @relation("AttorneyCases", fields: [attorneyId], references: [id])
+  documents   Document[]
+  messages    Message[]
+  tasks       Task[]
+  invoices    Invoice[]
+  appointments Appointment[]
+  auditLogs   AuditLog[]
+
+  @@map("cases")
+}
+
+model Document {
+  id            String            @id @default(cuid())
+  filename      String
+  originalName  String
+  path          String
+  size          Int
+  mimeType      String
+  caseId        String?
+  uploadedBy    String
+  uploadedAt    DateTime          @default(now())
+  isConfidential Boolean          @default(false)
+  isTemplate    Boolean          @default(false)
+  category      DocumentCategory?
+  status        DocumentStatus    @default(ACTIVE)
+  description   String?
+  tags          String[]
+  metadata      Json?
+  version       Int               @default(1)
+  parentId      String?
+  checksum      String?
+  
+  // Relations
+  case          Case?             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  access        DocumentAccess[]
+  auditLogs     AuditLog[]
+  versions      DocumentVersion[]
+  parent        Document?         @relation("DocumentVersions", fields: [parentId], references: [id])
+  children      Document[]        @relation("DocumentVersions")
+  workflowSteps DocumentWorkflowStep[]
+  evidenceItems EvidenceItem[]
+  searchIndex   SearchIndex[]
+
+  @@map("documents")
+}
+
+model DocumentAccess {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  grantedAt  DateTime @default(now())
+  expiresAt  DateTime?
+  
+  // Relations
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@map("document_access")
+}
+
+model Message {
+  id        String        @id @default(cuid())
+  content   String
+  caseId    String
+  senderId  String
+  receiverId String
+  isRead    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  readAt    DateTime?
+  
+  // Relations
+  case      Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sender    User          @relation("SenderMessages", fields: [senderId], references: [id])
+  receiver  User          @relation("ReceiverMessages", fields: [receiverId], references: [id])
+  auditLogs AuditLog[]
+
+  @@map("messages")
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  caseId      String
+  clientId    String
+  attorneyId  String
+  status      AppointmentStatus @default(SCHEDULED)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  case        Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client      User           @relation("ClientAppointments", fields: [clientId], references: [id])
+  attorney    User           @relation("AttorneyAppointments", fields: [attorneyId], references: [id])
+  auditLogs   AuditLog[]
+
+  @@map("appointments")
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  invoiceNumber String      @unique
+  caseId      String
+  clientId    String
+  amount      Decimal
+  status      InvoiceStatus @default(PENDING)
+  dueDate     DateTime
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Relations
+  case        Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client      ClientProfile  @relation(fields: [clientId], references: [id])
+  auditLogs   AuditLog[]
+
+  @@map("invoices")
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  caseId      String
+  assignedTo  String
+  assignedBy  String
+  dueDate     DateTime?
+  status      TaskStatus @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  completedAt DateTime?
+  
+  // Relations
+  case        Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  auditLogs   AuditLog[]
+
+  @@map("tasks")
+}
+
+// Document Management Models
+model DocumentVersion {
+  id              String      @id @default(cuid())
+  documentId      String
+  versionNumber   Int
+  filePath        String
+  fileSize        Int
+  checksum        String?
+  changeDescription String?
+  createdBy       String
+  createdAt       DateTime    @default(now())
+  
+  // Relations
+  document        Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNumber])
+  @@map("document_versions")
+}
+
+model DocumentTemplate {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  category        TemplateCategory
+  filePath        String
+  fileSize        Int
+  mimeType        String
+  variables       Json              // Template variable definitions
+  createdBy       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  isActive        Boolean           @default(true)
+  version         Int               @default(1)
+  
+  // Relations
+  versions        DocumentTemplateVersion[]
+  generatedDocuments Document[]
+
+  @@map("document_templates")
+}
+
+model DocumentTemplateVersion {
+  id              String      @id @default(cuid())
+  templateId      String
+  versionNumber   Int
+  filePath        String
+  fileSize        Int
+  checksum        String?
+  changeNotes     String?
+  createdBy       String
+  createdAt       DateTime    @default(now())
+  
+  // Relations
+  template        DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, versionNumber])
+  @@map("document_template_versions")
+}
+
+model EvidenceItem {
+  id              String            @id @default(cuid())
+  caseId          String
+  name            String
+  description     String?
+  filePath        String
+  thumbnailPath   String?
+  fileSize        Int
+  mimeType        String
+  collectedBy     String
+  collectedAt     DateTime          @default(now())
+  location        String?
+  isProcessed     Boolean           @default(false)
+  extractedText   String?
+  metadata        Json?
+  status          EvidenceStatus    @default(ACTIVE)
+  
+  // Relations
+  case            Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document        Document?         @relation(fields: [id], references: [id], onDelete: Cascade)
+  chainOfCustody  EvidenceChain[]   @relation("EvidenceChainItems")
+  tags            EvidenceTag[]
+  relationships   EvidenceRelationship[]
+  searchIndex     SearchIndex[]
+
+  @@map("evidence_items")
+}
+
+model EvidenceChain {
+  id              String      @id @default(cuid())
+  evidenceId      String
+  action          EvidenceAction
+  performedBy     String
+  performedAt     DateTime    @default(now())
+  location        String?
+  notes           String?
+  ipAddress       String?
+  
+  // Relations
+  evidence        EvidenceItem @relation("EvidenceChainItems", fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@map("evidence_chain")
+}
+
+model EvidenceTag {
+  id              String      @id @default(cuid())
+  evidenceId      String
+  tagName         String
+  taggedBy        String
+  taggedAt        DateTime    @default(now())
+  
+  // Relations
+  evidence        EvidenceItem @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@unique([evidenceId, tagName])
+  @@map("evidence_tags")
+}
+
+model EvidenceRelationship {
+  id                  String                  @id @default(cuid())
+  evidenceId          String
+  relatedEvidenceId   String
+  relationshipType    EvidenceRelationshipType
+  notes               String?
+  createdBy           String
+  createdAt           DateTime                @default(now())
+  
+  // Relations
+  evidence            EvidenceItem            @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  relatedEvidence     EvidenceItem            @relation("RelatedEvidence", fields: [relatedEvidenceId], references: [id], onDelete: Cascade)
+
+  @@unique([evidenceId, relatedEvidenceId])
+  @@map("evidence_relationships")
+}
+
+model DocumentWorkflow {
+  id              String                @id @default(cuid())
+  documentId      String
+  workflowType    DocumentWorkflowType
+  status          WorkflowStatus        @default(PENDING)
+  createdBy       String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  completedAt     DateTime?
+  
+  // Relations
+  document        Document              @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  steps           DocumentWorkflowStep[]
+
+  @@map("document_workflows")
+}
+
+model DocumentWorkflowStep {
+  id              String                @id @default(cuid())
+  workflowId      String
+  stepName        String
+  description     String?
+  status          WorkflowStepStatus    @default(PENDING)
+  assignedTo      String?
+  dueDate         DateTime?
+  completedAt     DateTime?
+  action          String?
+  performedBy     String?
+  notes           String?
+  order           Int
+  
+  // Relations
+  workflow        DocumentWorkflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  document        Document              @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@map("document_workflow_steps")
+}
+
+model SearchIndex {
+  id              String      @id @default(cuid())
+  documentId      String
+  evidenceId      String?
+  content         String
+  metadata        Json?
+  language        String?     @default("zh")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  document        Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  evidence        EvidenceItem? @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@map("search_index")
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      String
+  entityType  String
+  entityId    String
+  userId      String
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+  
+  // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  case        Case?       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  document    Document?   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  message     Message?    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  invoice     Invoice?    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  task        Task?       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+// Enums
+enum UserRole {
+  CLIENT
+  ATTORNEY
+  ADMIN
+  ASSISTANT
+}
+
+enum CaseType {
+  LABOR_DISPUTE
+  MEDICAL_MALPRACTICE
+  CRIMINAL_DEFENSE
+  DIVORCE_FAMILY
+  INHERITANCE_DISPUTE
+  CONTRACT_DISPUTE
+  ADMINISTRATIVE_CASE
+  DEMOLITION_CASE
+  SPECIAL_MATTERS
+}
+
+enum CaseStatus {
+  INTAKE
+  ACTIVE
+  PENDING
+  COMPLETED
+  CLOSED
+  ARCHIVED
+}
+
+enum CasePhase {
+  INTAKE_RISK_ASSESSMENT
+  PRE_PROCEEDING_PREPARATION
+  FORMAL_PROCEEDINGS
+  RESOLUTION_POST_PROCEEDING
+  CLOSURE_REVIEW_ARCHIVING
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum InvoiceStatus {
+  PENDING
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Document Management Enums
+enum DocumentCategory {
+  CONTRACT
+  COURT_FILING
+  EVIDENCE
+  CORRESPONDENCE
+  INVOICE
+  REPORT
+  TEMPLATE
+  LEGAL_BRIEF
+  MOTION
+  ORDER
+  TRANSCRIPT
+  PHOTOGRAPH
+  VIDEO
+  AUDIO
+  OTHER
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+  PROCESSING
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum TemplateCategory {
+  CONTRACT
+  COURT_FILING
+  LEGAL_BRIEF
+  MOTION
+  LETTER
+  AGREEMENT
+  FORM
+  REPORT
+  INVOICE
+  OTHER
+}
+
+enum EvidenceStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+  PROCESSING
+  ANALYZED
+  REVIEWED
+  ADMITTED
+  EXCLUDED
+}
+
+enum EvidenceAction {
+  COLLECTED
+  PROCESSED
+  ANALYZED
+  REVIEWED
+  ADMITTED
+  EXCLUDED
+  ARCHIVED
+  DESTROYED
+  TRANSFERRED
+}
+
+enum EvidenceRelationshipType {
+  SIMILAR
+  RELATED
+  CONTRADICTORY
+  SUPPORTING
+  SEQUENCE
+  LOCATION
+  SOURCE
+  DUPLICATE
+  DERIVED
+  OTHER
+}
+
+enum DocumentWorkflowType {
+  APPROVAL
+  REVIEW
+  SIGNATURE
+  FILING
+  DISTRIBUTION
+  ARCHIVAL
+  OTHER
+}
+
+enum WorkflowStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+  REJECTED
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  SKIPPED
+  REJECTED
+}
