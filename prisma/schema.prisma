@@ -25,23 +25,39 @@ model User {
   attorneyProfile AttorneyProfile?
   assignedTasks  Task[] @relation("TaskAssignee")
   createdTasks   Task[] @relation("TaskCreator")
-  auditLogs      AuditLog[]
+  invoices       Invoice[]
+  timeEntries    TimeEntry[]
+  expenses       Expense[]
 
   @@map("users")
 }
 
 model ClientProfile {
-  id        String @id @default(cuid())
-  userId    String @unique
-  phone     String?
-  address   String?
-  company   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String @id @default(cuid())
+  userId      String @unique
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  province    String?
+  country     String?
+  postalCode  String?
+  company     String?
+  taxId       String?  // 税号 for Chinese clients
+  idNumber    String?  // 身份证号 for Chinese individuals
+  notes       String?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
-  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cases  Case[]
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cases       Case[]
+  invoices    Invoice[]
+  payments    Payment[]
+  expenses    Expense[]
+  trustAccounts TrustAccount[]
 
   @@map("client_profiles")
 }
@@ -81,7 +97,10 @@ model Case {
   attorney    AttorneyProfile @relation(fields: [attorneyId], references: [id])
   documents   Document[]
   tasks       Task[]
-  auditLogs   AuditLog[]
+  billingNodes BillingNode[]
+  invoices    Invoice[]
+  expenses    Expense[]
+  timeEntries TimeEntry[]
 
   @@map("cases")
 }
@@ -105,7 +124,6 @@ model Document {
   
   // Relations
   case          Case?             @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  auditLogs     AuditLog[]
 
   @@map("documents")
 }
@@ -128,30 +146,8 @@ model Task {
   case        Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
   assignee    User       @relation("TaskAssignee", fields: [assignedTo], references: [id])
   creator     User       @relation("TaskCreator", fields: [assignedBy], references: [id])
-  auditLogs   AuditLog[]
 
   @@map("tasks")
-}
-
-model AuditLog {
-  id          String      @id @default(cuid())
-  action      String
-  entityType  String
-  entityId    String
-  userId      String
-  oldValues   Json?
-  newValues   Json?
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime    @default(now())
-  
-  // Relations
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  case        Case?       @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  document    Document?   @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  task        Task?       @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
-  @@map("audit_logs")
 }
 
 // Enums
@@ -222,181 +218,4 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
-}
-
-// Financial Management Models
-
-model BillingNode {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  caseId      String
-  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  phase       String   // Which phase this node belongs to
-  order       Int      // Order within phase
-  amount      Float
-  isPaid      Boolean  @default(false)
-  dueDate     DateTime?
-  paidDate    DateTime?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("billing_nodes")
-}
-
-model FeeStructure {
-  id          String   @id @default(cuid())
-  name        String
-  type        String   // "hourly", "flat", "contingency", "retainer"
-  description String?
-  rate        Float?   // For hourly fees
-  percentage  Float?   // For contingency fees
-  minimum     Float?   // Minimum fee amount
-  maximum     Float?   // Maximum fee amount
-  currency    String   @default("CNY")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("fee_structures")
-}
-
-model TimeEntry {
-  id          String   @id @default(cuid())
-  caseId      String
-  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  description String
-  hours       Float
-  rate        Float
-  amount      Float
-  date        DateTime
-  isBillable  Boolean  @default(true)
-  isBilled    Boolean  @default(false)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("time_entries")
-}
-
-model Expense {
-  id          String   @id @default(cuid())
-  caseId      String?
-  case        Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category    String   // "filing", "travel", "research", "expert", "copy", "postage", "other"
-  description String
-  amount      Float
-  currency    String   @default("CNY")
-  date        DateTime
-  isBillable  Boolean  @default(true)
-  isBilled    Boolean  @default(false)
-  isReimbursed Boolean @default(false)
-  receiptUrl  String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("expenses")
-}
-
-model Payment {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  amount      Float
-  currency    String   @default("CNY")
-  method      String   // "cash", "bank_transfer", "alipay", "wechat_pay", "credit_card"
-  reference   String?  // Payment reference number
-  status      String   @default("pending") // pending, completed, failed, refunded
-  transactionId String? // External payment processor ID
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("payments")
-}
-
-model TrustAccount {
-  id          String   @id @default(cuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  caseId      String?
-  case        Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  balance     Float    @default(0)
-  currency    String   @default("CNY")
-  isActive    Boolean  @default(true)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("trust_accounts")
-}
-
-model TrustTransaction {
-  id          String   @id @default(cuid())
-  trustAccountId String
-  trustAccount TrustAccount @relation(fields: [trustAccountId], references: [id], onDelete: Cascade)
-  type        String   // "deposit", "withdrawal", "transfer"
-  amount      Float
-  description String
-  reference   String?
-  status      String   @default("pending") // pending, completed, failed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("trust_transactions")
-}
-
-// Financial Enums
-enum FeeType {
-  HOURLY
-  FLAT
-  CONTINGENCY
-  RETAINER
-  HYBRID
-}
-
-enum ExpenseCategory {
-  FILING_FEES
-  COURT_COSTS
-  TRAVEL
-  RESEARCH
-  EXPERT_WITNESS
-  COPYING
-  POSTAGE
-  MEALS
-  ACCOMMODATION
-  TRANSLATION
-  OTHER
-}
-
-enum PaymentMethod {
-  CASH
-  BANK_TRANSFER
-  ALIPAY
-  WECHAT_PAY
-  CREDIT_CARD
-  CHECK
-  OTHER
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-  PARTIALLY_REFUNDED
-}
-
-enum TrustTransactionType {
-  DEPOSIT
-  WITHDRAWAL
-  TRANSFER
-  INTEREST
 }
