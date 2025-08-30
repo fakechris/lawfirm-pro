@@ -97,10 +97,6 @@ model Case {
   attorney    AttorneyProfile @relation(fields: [attorneyId], references: [id])
   documents   Document[]
   tasks       Task[]
-  billingNodes BillingNode[]
-  invoices    Invoice[]
-  expenses    Expense[]
-  timeEntries TimeEntry[]
 
   @@map("cases")
 }
