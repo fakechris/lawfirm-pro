@@ -43,3 +43,5 @@ Complete database schema design with Prisma, including migrations and all core e
 - Task dependencies and subtasks
 - Time tracking and note-taking capabilities
 - Comprehensive audit trails
+
+<!-- SYNCED: 2025-08-30T13:37:58Z -->
