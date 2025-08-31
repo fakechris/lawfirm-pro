@@ -160,6 +160,55 @@ export const integrationConfig = {
     autoRetry: process.env.INTEGRATION_DATA_AUTO_RETRY === 'true',
     maxRetries: parseInt(process.env.INTEGRATION_DATA_MAX_RETRIES || '3'),
   },
+
+  // Monitoring and Observability
+  monitoring: {
+    enabled: process.env.INTEGRATION_MONITORING_ENABLED === 'true',
+    metrics: {
+      enabled: process.env.INTEGRATION_METRICS_ENABLED === 'true',
+      retentionDays: parseInt(process.env.INTEGRATION_METRICS_RETENTION_DAYS || '30'),
+      maxMetrics: parseInt(process.env.INTEGRATION_MAX_METRICS || '100000'),
+    },
+    alerts: {
+      enabled: process.env.INTEGRATION_ALERTS_ENABLED === 'true',
+      defaultChannels: process.env.INTEGRATION_ALERT_CHANNELS?.split(',') || ['default-email', 'default-slack'],
+      cooldownPeriod: parseInt(process.env.INTEGRATION_ALERT_COOLDOWN || '300'),
+    },
+    logging: {
+      enabled: process.env.INTEGRATION_LOGGING_ENABLED === 'true',
+      level: process.env.INTEGRATION_LOG_LEVEL || 'INFO',
+      retentionDays: parseInt(process.env.INTEGRATION_LOGS_RETENTION_DAYS || '30'),
+      maxLogs: parseInt(process.env.INTEGRATION_MAX_LOGS || '100000'),
+    },
+    dashboard: {
+      enabled: process.env.INTEGRATION_DASHBOARD_ENABLED === 'true',
+      refreshInterval: parseInt(process.env.INTEGRATION_DASHBOARD_REFRESH || '60'),
+      maxDataPoints: parseInt(process.env.INTEGRATION_DASHBOARD_DATA_POINTS || '1000'),
+    },
+    config: {
+      enabled: process.env.INTEGRATION_CONFIG_ENABLED === 'true',
+      encryptionKey: process.env.INTEGRATION_CONFIG_ENCRYPTION_KEY || 'default-key-change-in-production',
+      autoRotate: process.env.INTEGRATION_CONFIG_AUTO_ROTATE === 'true',
+    },
+    healthChecks: {
+      enabled: process.env.INTEGRATION_HEALTH_CHECKS_ENABLED === 'true',
+      interval: parseInt(process.env.INTEGRATION_HEALTH_CHECK_INTERVAL || '60'),
+      timeout: parseInt(process.env.INTEGRATION_HEALTH_CHECK_TIMEOUT || '10000'),
+    },
+    performance: {
+      enabled: process.env.INTEGRATION_PERFORMANCE_ENABLED === 'true',
+      sampleRate: parseFloat(process.env.INTEGRATION_PERFORMANCE_SAMPLE_RATE || '1.0'),
+      slowRequestThreshold: parseInt(process.env.INTEGRATION_SLOW_REQUEST_THRESHOLD || '5000'),
+      errorRateThreshold: parseFloat(process.env.INTEGRATION_ERROR_RATE_THRESHOLD || '0.05'),
+    },
+    security: {
+      enabled: process.env.INTEGRATION_SECURITY_ENABLED === 'true',
+      auditEnabled: process.env.INTEGRATION_SECURITY_AUDIT_ENABLED === 'true',
+      sensitiveDataMasking: process.env.INTEGRATION_SECURITY_MASKING_ENABLED === 'true',
+      maxLoginAttempts: parseInt(process.env.INTEGRATION_MAX_LOGIN_ATTEMPTS || '5'),
+      lockoutDuration: parseInt(process.env.INTEGRATION_LOCKOUT_DURATION || '900'),
+    },
+  },
 };
 
 export default integrationConfig;

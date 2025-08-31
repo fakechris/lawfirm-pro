@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { Database } from '../utils/database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { asyncHandler, createError } from '../middleware/errorHandler';
+import { documentController } from '../controllers/documentController';
+import { workflowController } from '../controllers/workflowController';
 
 const router = Router();
 
@@ -417,5 +418,20 @@ router.get('/case/:caseId', authenticate, asyncHandler(async (req: AuthRequest, 
     data: { documents },
   });
 }));
+
+// Enhanced Document Management Routes (using new comprehensive services)
+router.post('/upload', authenticate, documentController.uploadDocument.bind(documentController));
+router.get('/:id/download', authenticate, documentController.downloadDocument.bind(documentController));
+router.get('/search/documents', authenticate, documentController.searchDocuments.bind(documentController));
+router.get('/search/suggestions', authenticate, documentController.getSearchSuggestions.bind(documentController));
+router.get('/stats', authenticate, authorize(['ADMIN', 'MANAGER']), documentController.getDocumentStats.bind(documentController));
+router.get('/user/documents', authenticate, documentController.getUserDocuments.bind(documentController));
+router.post('/:id/versions', authenticate, documentController.createVersion.bind(documentController));
+router.get('/:id/versions', authenticate, documentController.getVersions.bind(documentController));
+router.post('/:id/reprocess', authenticate, documentController.reprocessDocument.bind(documentController));
+
+// Document Workflow Management Routes
+router.post('/:id/workflows', authenticate, workflowController.createWorkflow.bind(workflowController));
+router.get('/:id/workflows', authenticate, workflowController.getDocumentWorkflows.bind(workflowController));
 
 export default router;

@@ -10,24 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-<<<<<<< HEAD
-// 用户角色枚举
+// User Management Enums
 enum UserRole {
   ADMIN
   LAWYER
   PARALEGAL
   ASSISTANT
   ARCHIVIST
+  CLIENT
+  ATTORNEY
 }
 
-// 用户状态枚举
 enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
 }
 
-// 案件类型枚举
+// Case Management Enums
 enum CaseType {
   LABOR_DISPUTE           // 劳动争议
   MEDICAL_MALPRACTICE     // 医疗纠纷
@@ -40,7 +40,6 @@ enum CaseType {
   SPECIAL_MATTER          // 特殊事项管理
 }
 
-// 案件阶段枚举
 enum CasePhase {
   INTAKE_RISK_ASSESSMENT   // 接案、风险评估与策略制定
   PRE_PROCEEDING_PREP      // 诉前准备与立案
@@ -49,37 +48,216 @@ enum CasePhase {
   CLOSURE_REVIEW           // 结案、审查与归档
 }
 
-// 案件状态枚举
 enum CaseStatus {
   DRAFT
+  INTAKE
   ACTIVE
+  PENDING
   ON_HOLD
   COMPLETED
   CANCELLED
+  CLOSED
+  ARCHIVED
 }
 
-// 任务状态枚举
-=======
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Task Management Enums
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Document Management Enums
+enum DocumentProcessingStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum DocumentCategory {
+  LEGAL_BRIEF
+  CONTRACT
+  EVIDENCE
+  CORRESPONDENCE
+  COURT_FILING
+  RESEARCH
+  FINANCIAL
+  MEDICAL
+  INVOICE
+  REPORT
+  TEMPLATE
+  MOTION
+  ORDER
+  TRANSCRIPT
+  PHOTOGRAPH
+  VIDEO
+  AUDIO
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  DELETED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PROCESSING
+}
+
+enum DocumentType {
+  LEGAL_DOCUMENT
+  EVIDENCE
+  CONTRACT
+  CORRESPONDENCE
+  COURT_FILING
+  RESEARCH
+  TEMPLATE
+  OTHER
+}
+
+// Knowledge Base Enums
+enum KnowledgeBaseContentType {
+  BEST_PRACTICE
+  CASE_STUDY
+  LEGAL_GUIDE
+  TEMPLATE
+  TRAINING_MATERIAL
+  POLICY
+  PROCEDURE
+  RESEARCH_NOTE
+  LEGAL_OPINION
+  CHECKLIST
+  WORKFLOW
+  RESOURCE
+}
+
+enum KnowledgeBaseAccessLevel {
+  PUBLIC
+  INTERNAL
+  RESTRICTED
+  CONFIDENTIAL
+}
+
+enum KnowledgeBaseStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+  DEPRECATED
+}
+
+// Evidence Management Enums
+enum EvidenceType {
+  PHYSICAL
+  DIGITAL
+  DOCUMENT
+  PHOTO
+  VIDEO
+  AUDIO
+  TESTIMONY
+  EXPERT_REPORT
+}
+
+enum EvidenceStatus {
+  ACTIVE
+  ARCHIVED
+  DESTROYED
+  COMPROMISED
+  PROCESSING
+  ANALYZED
+  REVIEWED
+  ADMITTED
+  EXCLUDED
+}
+
+enum EvidenceRelationshipType {
+  RELATED_TO
+  DERIVED_FROM
+  SUPPORTS
+  CONTRADICTS
+  DUPLICATE_OF
+  CORROBORATES
+}
+
+// Workflow Enums
+enum WorkflowStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  REJECTED
+}
+
+// Core Models
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  phone       String?
+  avatar      String?
+  role        UserRole @default(LAWYER)
+  status      UserStatus @default(ACTIVE)
+  
+  // Assistant specialization
+  assistantType String? // RESEARCH_ASSISTANT, DOCUMENT_ASSISTANT, COORDINATION_ASSISTANT
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
   // Relations
   clientProfile ClientProfile?
   attorneyProfile AttorneyProfile?
-  assignedTasks  Task[] @relation("TaskAssignee")
-  createdTasks   Task[] @relation("TaskCreator")
-  invoices      Invoice[]
-  timeEntries   TimeEntry[]
-  expenses      Expense[]
+  leadCases   Case[]                @relation("LeadLawyer")
+  assignedTasks Task[]              @relation("TaskAssignee")
+  createdTasks Task[]               @relation("TaskCreator")
+  uploadedDocuments Document[]      @relation("UserDocuments")
+  timeEntries TimeEntry[]           @relation("UserTimeEntries")
+  notes       Note[]                @relation("UserNotes")
+  caseMemberships CaseTeamMember[]  @relation("UserCaseMemberships")
+  documentApprovals DocumentApproval[] @relation("UserDocumentApprovals")
+  createdDocumentVersions DocumentVersion[] @relation("DocumentVersionCreator")
+  createdDocumentTemplates DocumentTemplate[] @relation("DocumentTemplateCreator")
+  createdTemplateVersions TemplateVersion[] @relation("TemplateVersionCreator")
+  documentComments DocumentComment[] @relation("DocumentCommentAuthor")
+  sharedDocuments DocumentShare[] @relation("DocumentSharedBy")
+  receivedDocuments DocumentShare[] @relation("DocumentSharedWith")
+  startedWorkflows DocumentWorkflow[] @relation("DocumentWorkflowStarter")
+  assignedWorkflowSteps DocumentWorkflowStep[] @relation("DocumentWorkflowStepAssignee")
+  collectedEvidence EvidenceItem[] @relation("EvidenceCollector")
+  evidenceChainEntries EvidenceChain[] @relation("EvidenceChainPerformer")
+  invoices    Invoice[]
+  expenses    Expense[]
   notifications Notification[]
   notificationPreference NotificationPreference?
+  
+  // Knowledge Base relations
+  authoredArticles KnowledgeBaseArticle[] @relation("KnowledgeBaseAuthor")
+  reviewedArticles KnowledgeBaseArticle[] @relation("KnowledgeBaseReviewer")
+  knowledgeBaseComments KnowledgeBaseComment[]
 
   @@map("users")
 }
@@ -119,267 +297,6 @@ model AttorneyProfile {
   @@map("attorney_profiles")
 }
 
-model Case {
-  id          String      @id @default(cuid())
-  title       String
-  description String?
-  caseType    CaseType
-  status      CaseStatus
-  phase       CasePhase
-  clientId    String
-  attorneyId  String
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  closedAt    DateTime?
-  
-  // Relations
-  client      ClientProfile @relation(fields: [clientId], references: [id])
-  attorney    AttorneyProfile @relation(fields: [attorneyId], references: [id])
-  documents   Document[]
-  tasks       Task[]
-  evidenceItems EvidenceItem[]
-  invoices    Invoice[]
-  billingNodes BillingNode[]
-  timeEntries  TimeEntry[]
-  expenses     Expense[]
-  trustAccounts TrustAccount[]
-
-  @@map("cases")
-}
-
-model Document {
-  id            String            @id @default(cuid())
-  filename      String
-  originalName  String
-  path          String
-  size          Int
-  mimeType      String
-  caseId        String?
-  uploadedBy    String
-  uploadedAt    DateTime          @default(now())
-  isConfidential Boolean          @default(false)
-  isTemplate    Boolean          @default(false)
-  category      DocumentCategory?
-  status        DocumentStatus    @default(ACTIVE)
-  description   String?
-  tags          String[]
-  metadata      Json?
-  checksum      String?
-  version       Int               @default(1)
-  thumbnailPath String?
-  extractedText String?
-  
-  // Relations
-  case          Case?             @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  versions      DocumentVersion[]
-  template      DocumentTemplate? @relation("DocumentTemplateSource", fields: [templateId], references: [id])
-  templateId    String?
-  workflow      DocumentWorkflow?
-  comments      DocumentComment[]
-  shares        DocumentShare[]
-
-  @@map("documents")
-}
-
-model Task {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  caseId      String
-  assignedTo  String
-  assignedBy  String
-  dueDate     DateTime?
-  status      TaskStatus @default(PENDING)
-  priority    TaskPriority @default(MEDIUM)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  completedAt DateTime?
-  
-  // Relations
-  case        Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  assignee    User               @relation("TaskAssignee", fields: [assignedTo], references: [id])
-  creator     User               @relation("TaskCreator", fields: [assignedBy], references: [id])
-  dependencies TaskDependency[]  @relation("TaskDependencies")
-  dependents   TaskDependency[]  @relation("TaskDependents")
-
-  @@map("tasks")
-}
-
-model TaskDependency {
-  id              String   @id @default(cuid())
-  taskId          String
-  dependsOnTaskId String
-  dependencyType  DependencyType @default(BLOCKING)
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  task            Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
-  dependsOnTask   Task @relation("TaskDependents", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
-  
-  @@unique([taskId, dependsOnTaskId])
-  @@map("task_dependencies")
-}
-
-// Enums
-enum UserRole {
-  CLIENT
-  ATTORNEY
-  ADMIN
-  ASSISTANT
-}
-
-enum CaseType {
-  LABOR_DISPUTE
-  MEDICAL_MALPRACTICE
-  CRIMINAL_DEFENSE
-  DIVORCE_FAMILY
-  INHERITANCE_DISPUTE
-  CONTRACT_DISPUTE
-  ADMINISTRATIVE_CASE
-  DEMOLITION_CASE
-  SPECIAL_MATTERS
-}
-
-enum CaseStatus {
-  INTAKE
-  ACTIVE
-  PENDING
-  COMPLETED
-  CLOSED
-  ARCHIVED
-}
-
-enum CasePhase {
-  INTAKE_RISK_ASSESSMENT
-  PRE_PROCEEDING_PREPARATION
-  FORMAL_PROCEEDINGS
-  RESOLUTION_POST_PROCEEDING
-  CLOSURE_REVIEW_ARCHIVING
-}
-
-enum DocumentCategory {
-  LEGAL_BRIEF
-  CONTRACT
-  EVIDENCE
-  CORRESPONDENCE
-  COURT_FILING
-  RESEARCH
-  FINANCIAL
-  MEDICAL
-  OTHER
-}
-
-enum DocumentStatus {
-  ACTIVE
-  ARCHIVED
-  DELETED
-  UNDER_REVIEW
-}
-
->>>>>>> epic/law-firm-pro
-enum TaskStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-<<<<<<< HEAD
-  OVERDUE
-}
-
-// 任务优先级枚举
-=======
-}
-
->>>>>>> epic/law-firm-pro
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-<<<<<<< HEAD
-// 文档类型枚举
-enum DocumentType {
-  LEGAL_DOCUMENT
-  EVIDENCE
-  CONTRACT
-  CORRESPONDENCE
-  COURT_FILING
-  RESEARCH
-  TEMPLATE
-  OTHER
-}
-
-// 文档状态枚举
-enum DocumentStatus {
-  DRAFT
-  REVIEW
-  APPROVED
-  SIGNED
-  FILED
-  ARCHIVED
-}
-
-// 计费方式枚举
-enum BillingMethod {
-  FIXED_FEE              // 计件收费
-  HOURLY                 // 计时收费
-  CONTINGENCY            // 风险代理
-  PERCENTAGE             // 按标的额比例收费
-}
-
-// 费用状态枚举
-enum FeeStatus {
-  DRAFT
-  PENDING
-  PAID
-  OVERDUE
-  CANCELLED
-}
-
-// 支付方式枚举
-enum PaymentMethod {
-  CASH
-  BANK_TRANSFER
-  WECHAT_PAY
-  ALIPAY
-  CREDIT_CARD
-}
-
-// 用户表
-model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  username    String   @unique
-  password    String
-  firstName   String
-  lastName    String
-  phone       String?
-  avatar      String?
-  role        UserRole @default(LAWYER)
-  status      UserStatus @default(ACTIVE)
-  
-  // 律师助理子类型
-  assistantType String? // RESEARCH_ASSISTANT, DOCUMENT_ASSISTANT, COORDINATION_ASSISTANT
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // 关联关系
-  leadCases   Case[]                @relation("LeadLawyer")
-  assignedTasks Task[]              @relation("TaskAssignee")
-  createdTasks Task[]               @relation("TaskCreator")
-  uploadedDocuments Document[]      @relation("UserDocuments")
-  timeEntries TimeEntry[]           @relation("UserTimeEntries")
-  notes       Note[]                @relation("UserNotes")
-  caseMemberships CaseTeamMember[]  @relation("UserCaseMemberships")
-  documentApprovals DocumentApproval[] @relation("UserDocumentApprovals")
-  
-  @@map("users")
-}
-
-// 客户表
 model Client {
   id          String   @id @default(cuid())
   firstName   String
@@ -393,7 +310,7 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // 关联关系
+  // Relations
   cases       Case[]
   documents   Document[]
   contacts    Contact[]
@@ -402,7 +319,6 @@ model Client {
   @@map("clients")
 }
 
-// 案件表
 model Case {
   id          String     @id @default(cuid())
   caseNumber  String     @unique
@@ -412,16 +328,16 @@ model Case {
   phase       CasePhase  @default(INTAKE_RISK_ASSESSMENT)
   status      CaseStatus @default(DRAFT)
   
-  // 时间信息
+  // Time information
   startDate   DateTime
   expectedEndDate DateTime?
   actualEndDate DateTime?
   
-  // 金额信息
+  // Financial information
   claimAmount Float?     // 诉讼标的额
   settlementAmount Float? // 和解金额
   
-  // 关联字段
+  // Relations
   clientId    String
   leadLawyerId String
   assignedAt  DateTime  @default(now())
@@ -429,7 +345,7 @@ model Case {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
-  // 关联关系
+  // Relations
   client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   leadLawyer  User      @relation("LeadLawyer", fields: [leadLawyerId], references: [id], onDelete: Restrict)
   teamMembers CaseTeamMember[]
@@ -439,11 +355,17 @@ model Case {
   timeEntries TimeEntry[]
   notes       Note[]
   phases      CasePhaseHistory[]
+  evidenceItems EvidenceItem[]
+  billingNodes BillingNode[]
+  clientProfiles ClientProfile[]
+  attorneyProfiles AttorneyProfile[]
+  invoices Invoice[]
+  expenses Expense[]
+  trustAccounts TrustAccount[]
   
   @@map("cases")
 }
 
-// 案件团队成员表
 model CaseTeamMember {
   id       String   @id @default(cuid())
   caseId   String
@@ -455,7 +377,7 @@ model CaseTeamMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // 关联关系
+  // Relations
   case     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
   user     User     @relation("UserCaseMemberships", fields: [userId], references: [id], onDelete: Cascade)
   
@@ -463,7 +385,6 @@ model CaseTeamMember {
   @@map("case_team_members")
 }
 
-// 案件阶段历史表
 model CasePhaseHistory {
   id        String   @id @default(cuid())
   caseId    String
@@ -475,13 +396,12 @@ model CasePhaseHistory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // 关联关系
+  // Relations
   case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
   
   @@map("case_phase_history")
 }
 
-// 任务表
 model Task {
   id          String       @id @default(cuid())
   title       String
@@ -489,12 +409,12 @@ model Task {
   status      TaskStatus   @default(PENDING)
   priority    TaskPriority @default(MEDIUM)
   
-  // 时间信息
+  // Time information
   dueDate     DateTime?
   startedAt   DateTime?
   completedAt DateTime?
   
-  // 关联字段
+  // Relations
   caseId      String?
   assigneeId  String?
   createdById String
@@ -502,7 +422,7 @@ model Task {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   
-  // 关联关系
+  // Relations
   case        Case?       @relation(fields: [caseId], references: [id], onDelete: Cascade)
   assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdBy   User        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
@@ -513,30 +433,28 @@ model Task {
   @@map("tasks")
 }
 
-// 子任务表
 model SubTask {
   id          String     @id @default(cuid())
   title       String
   description String?
   status      TaskStatus @default(PENDING)
   
-  // 时间信息
+  // Time information
   dueDate     DateTime?
   completedAt DateTime?
   
-  // 关联字段
+  // Relations
   taskId      String
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // 关联关系
+  // Relations
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   
   @@map("subtasks")
 }
 
-// 任务依赖表
 model TaskDependency {
   id           String   @id @default(cuid())
   taskId       String
@@ -545,7 +463,7 @@ model TaskDependency {
   
   createdAt    DateTime @default(now())
   
-  // 关联关系
+  // Relations
   task         Task     @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
   dependsOn    Task     @relation("TaskDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
   
@@ -553,63 +471,82 @@ model TaskDependency {
   @@map("task_dependencies")
 }
 
-// 文档表
+// Document Management Models
 model Document {
-  id          String        @id @default(cuid())
-  filename    String
-  originalName String
-  path        String
-  size        Int
-  mimeType    String
-  type        DocumentType
-  status      DocumentStatus @default(DRAFT)
+  id            String            @id @default(cuid())
+  filename      String
+  originalName  String
+  path          String
+  size          Int
+  mimeType      String
+  type          DocumentType
+  status        DocumentStatus    @default(DRAFT)
+  category      DocumentCategory?
   
-  // 版本控制
-  version     Int           @default(1)
-  parentId    String?       // 父文档ID（用于版本控制）
-  isLatest    Boolean       @default(true)
+  // Version control
+  version       Int               @default(1)
+  parentId      String?           // Parent document ID for version control
+  isLatest      Boolean           @default(true)
   
-  // 关联字段
-  caseId      String?
-  clientId    String?
-  uploadedById String
+  // Relations
+  caseId        String?
+  clientId      String?
+  uploadedById  String
   
-  // 文档内容
-  content     String?
-  extractedText String?    // OCR提取的文本
+  // Document content
+  content       String?
+  extractedText String?           // OCR extracted text
+  processingStatus String?        // PENDING, PROCESSING, PROCESSED, FAILED
+  isConfidential Boolean          @default(false)
+  isTemplate    Boolean          @default(false)
+  description   String?
+  tags          String[]
+  metadata      Json?
+  checksum      String?
+  thumbnailPath String?
+  deletedAt     DateTime?
   
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   
-  // 关联关系
-  case        Case?         @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  client      Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  uploadedBy  User          @relation("UserDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
-  parent      Document?     @relation("DocumentParent", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Document[]    @relation("DocumentParent")
-  versions    DocumentVersion[]
-  approvals   DocumentApproval[]
+  // Relations
+  case          Case?             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client        Client?           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedBy    User              @relation("UserDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
+  parent        Document?         @relation("DocumentParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Document[]        @relation("DocumentParent")
+  versions      DocumentVersion[]
+  approvals     DocumentApproval[]
+  template      DocumentTemplate? @relation("DocumentTemplateSource", fields: [templateId], references: [id])
+  templateId    String?
+  workflow      DocumentWorkflow?
+  comments      DocumentComment[]
+  shares        DocumentShare[]
   
   @@map("documents")
 }
 
-// 文档版本表
 model DocumentVersion {
-  id          String   @id @default(cuid())
-  documentId  String
-  version     Int
-  changes     String?
-  createdBy  String
-  createdAt   DateTime @default(now())
+  id               String   @id @default(cuid())
+  documentId       String
+  versionNumber    Int
+  filePath         String
+  fileSize         Int
+  checksum         String
+  changeDescription String?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  isLatest         Boolean  @default(true)
+  isDeleted        Boolean  @default(false)
   
-  // 关联关系
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
-  @@unique([documentId, version])
+  // Relations
+  document         Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdByUser    User     @relation("DocumentVersionCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, versionNumber])
   @@map("document_versions")
 }
 
-// 文档审批表
 model DocumentApproval {
   id          String           @id @default(cuid())
   documentId  String
@@ -621,416 +558,11 @@ model DocumentApproval {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   
-  // 关联关系
+  // Relations
   document    Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
   approver    User             @relation("UserDocumentApprovals", fields: [approverId], references: [id], onDelete: Restrict)
   
   @@map("document_approvals")
-}
-
-// 联系人表
-model Contact {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  email       String?
-  phone       String?
-  position    String?
-  company     String?
-  relationship String?  // 与客户的关系
-  
-  // 关联字段
-  clientId    String
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // 关联关系
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  @@map("contacts")
-}
-
-// 费用表
-model Fee {
-  id            String       @id @default(cuid())
-  description   String
-  amount        Float
-  method        BillingMethod
-  status        FeeStatus    @default(DRAFT)
-  
-  // 时间信息
-  dueDate       DateTime
-  paidDate      DateTime?
-  
-  // 关联字段
-  caseId        String?
-  clientId      String
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  
-  // 关联关系
-  case          Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  payments      Payment[]
-  
-  @@map("fees")
-}
-
-// 支付表
-model Payment {
-  id          String        @id @default(cuid())
-  amount      Float
-  method      PaymentMethod
-  transactionId String?
-  notes       String?
-  
-  // 关联字段
-  feeId       String
-  
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  
-  // 关联关系
-  fee         Fee           @relation(fields: [feeId], references: [id], onDelete: Cascade)
-  
-  @@map("payments")
-}
-
-// 时间记录表
-model TimeEntry {
-  id          String   @id @default(cuid())
-  description String
-  hours       Float
-  rate        Float
-  
-  // 时间信息
-  date        DateTime
-  startTime   DateTime?
-  endTime     DateTime?
-  
-  // 关联字段
-  caseId      String?
-  userId      String
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // 关联关系
-  case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user        User     @relation("UserTimeEntries", fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("time_entries")
-}
-
-// 笔记表
-model Note {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  isPrivate   Boolean  @default(false)
-  
-  // 关联字段
-  caseId      String?
-  userId      String
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // 关联关系
-  case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user        User     @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("notes")
-=======
-enum DependencyType {
-  BLOCKING
-  SEQUENTIAL
-  PARALLEL
-  SUGGESTED
-}
-
-// Financial Models
-model Invoice {
-  id              String        @id @default(cuid())
-  invoiceNumber   String        @unique
-  caseId          String?
-  clientId        String
-  userId          String
-  status          InvoiceStatus @default(DRAFT)
-  issueDate       DateTime      @default(now())
-  dueDate         DateTime
-  subtotal        Float
-  taxRate         Float         @default(0.06)
-  taxAmount       Float
-  total           Float
-  currency        String        @default("CNY")
-  notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  // Relations
-  case     Case?      @relation(fields: [caseId], references: [id])
-  client   ClientProfile @relation(fields: [clientId], references: [id])
-  user     User       @relation(fields: [userId], references: [id])
-  items    InvoiceItem[]
-  payments Payment[]
-
-  @@map("invoices")
-}
-
-model InvoiceItem {
-  id          String           @id @default(cuid())
-  invoiceId   String
-  type        InvoiceItemType
-  description String
-  quantity    Float            @default(1)
-  unitPrice   Float
-  amount      Float
-  taxRate     Float            @default(0.06)
-  taxAmount   Float
-  total       Float
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  // Relations
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@map("invoice_items")
-}
-
-model BillingNode {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  caseId      String
-  phase       String
-  order       Int
-  amount      Float
-  dueDate     DateTime?
-  isActive    Boolean  @default(true)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  @@map("billing_nodes")
-}
-
-model FeeStructure {
-  id          String  @id @default(cuid())
-  name        String
-  description String?
-  caseType    String
-  feeType     FeeType
-  rate        Float?
-  percentage  Float?
-  minimum     Float?
-  maximum     Float?
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("fee_structures")
-}
-
-model TimeEntry {
-  id          String   @id @default(cuid())
-  caseId      String
-  userId      String
-  description String
-  hours       Float
-  rate        Float
-  amount      Float
-  date        DateTime
-  isBilled    Boolean  @default(false)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("time_entries")
-}
-
-model Expense {
-  id          String           @id @default(cuid())
-  caseId      String?
-  userId      String
-  category    ExpenseCategory
-  description String
-  amount      Float
-  date        DateTime
-  isBillable  Boolean          @default(true)
-  isBilled    Boolean          @default(false)
-  receiptUrl  String?
-  notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  // Relations
-  case Case? @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("expenses")
-}
-
-model Payment {
-  id            String         @id @default(cuid())
-  invoiceId     String
-  amount        Float
-  method        PaymentMethod
-  status        PaymentStatus  @default(PENDING)
-  reference     String?
-  transactionId String?
-  notes         String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  // Relations
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@map("payments")
-}
-
-model TrustAccount {
-  id          String   @id @default(cuid())
-  clientId    String
-  caseId      String?
-  balance     Float    @default(0)
-  currency    String   @default("CNY")
-  isActive    Boolean  @default(true)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  client   ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  case     Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  transactions TrustTransaction[]
-
-  @@map("trust_accounts")
-}
-
-model TrustTransaction {
-  id             String               @id @default(cuid())
-  trustAccountId String
-  type           TrustTransactionType
-  amount         Float
-  description    String
-  reference      String?
-  status         String               @default("pending")
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-
-  // Relations
-  trustAccount TrustAccount @relation(fields: [trustAccountId], references: [id], onDelete: Cascade)
-
-  @@map("trust_transactions")
-}
-
-model WebhookLog {
-  id        String   @id @default(cuid())
-  gateway   String
-  payload   String
-  status    String   @default("PENDING")
-  error     String?
-  retryCount Int     @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("webhook_logs")
-}
-
-// Financial Enums
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  VIEWED
-  PARTIALLY_PAID
-  PAID
-  OVERDUE
-  CANCELLED
-  REFUNDED
-}
-
-enum InvoiceItemType {
-  TIME_ENTRY
-  EXPENSE
-  FEE
-  DISCOUNT
-  TAX
-  BILLING_NODE
-}
-
-enum FeeType {
-  HOURLY
-  FLAT
-  CONTINGENCY
-  RETAINER
-  HYBRID
-}
-
-enum ExpenseCategory {
-  TRAVEL
-  MEALS
-  ACCOMMODATION
-  SUPPLIES
-  POSTAGE
-  COURT_FEES
-  EXPERT_WITNESS
-  RESEARCH
-  OTHER
-}
-
-enum PaymentMethod {
-  ALIPAY
-  WECHAT_PAY
-  BANK_TRANSFER
-  CASH
-  CREDIT_CARD
-  CHECK
-}
-
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  CANCELLED
-  REFUNDED
-}
-
-enum TrustTransactionType {
-  DEPOSIT
-  WITHDRAWAL
-  TRANSFER
-  FEE_PAYMENT
-  REFUND
-}
-
-// Document Management Models
-model DocumentVersion {
-  id               String   @id @default(cuid())
-  documentId       String
-  versionNumber    Int
-  filePath         String
-  fileSize         Int
-  checksum         String
-  changeDescription String?
-  createdAt        DateTime @default(now())
-  createdBy        String
-  
-  // Relations
-  document         Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@unique([documentId, versionNumber])
-  @@map("document_versions")
 }
 
 model DocumentTemplate {
@@ -1039,15 +571,24 @@ model DocumentTemplate {
   description      String?
   category         DocumentCategory?
   filePath         String
+  fileSize         Int?
+  mimeType         String?
+  checksum         String?
   variableSchema   Json
+  tags             String[]
   isPublic         Boolean  @default(false)
+  isActive         Boolean  @default(true)
   createdBy        String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   usageCount       Int      @default(0)
+  metadata         Json?
   
   // Relations
   generatedDocuments Document[] @relation("DocumentTemplateSource")
+  createdByUser     User      @relation("DocumentTemplateCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  variables         TemplateVariable[]
+  versions          TemplateVersion[]
   
   @@map("document_templates")
 }
@@ -1065,6 +606,7 @@ model DocumentComment {
   
   // Relations
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author     User     @relation("DocumentCommentAuthor", fields: [userId], references: [id], onDelete: Restrict)
   parent     DocumentComment? @relation("CommentReplies", fields: [parentId], references: [id])
   replies    DocumentComment[] @relation("CommentReplies")
   
@@ -1085,6 +627,8 @@ model DocumentShare {
   
   // Relations
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sharedByUser   User     @relation("DocumentSharedBy", fields: [sharedBy], references: [id], onDelete: Restrict)
+  sharedWithUser User     @relation("DocumentSharedWith", fields: [sharedWith], references: [id], onDelete: Restrict)
   
   @@map("document_shares")
 }
@@ -1100,6 +644,7 @@ model DocumentWorkflow {
   
   // Relations
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  startedByUser User     @relation("DocumentWorkflowStarter", fields: [startedBy], references: [id], onDelete: Restrict)
   steps       DocumentWorkflowStep[]
   
   @@map("document_workflows")
@@ -1122,11 +667,13 @@ model DocumentWorkflowStep {
   
   // Relations
   workflow    DocumentWorkflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  assignedToUser User?            @relation("DocumentWorkflowStepAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
   
   @@unique([workflowId, stepNumber])
   @@map("document_workflow_steps")
 }
 
+// Evidence Management Models
 model EvidenceItem {
   id               String           @id @default(cuid())
   caseId           String
@@ -1147,6 +694,9 @@ model EvidenceItem {
   // Relations
   case             Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
   chainOfCustody   EvidenceChain[]
+  relationships    EvidenceRelationship[] @relation("EvidenceRelationshipSource")
+  relatedTo        EvidenceRelationship[] @relation("EvidenceRelationshipTarget")
+  collectedByUser  User             @relation("EvidenceCollector", fields: [collectedBy], references: [id], onDelete: Restrict)
   
   @@map("evidence_items")
 }
@@ -1163,20 +713,442 @@ model EvidenceChain {
   
   // Relations
   evidence      EvidenceItem @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  performedByUser User       @relation("EvidenceChainPerformer", fields: [performedBy], references: [id], onDelete: Restrict)
   
   @@map("evidence_chain")
 }
 
-model SearchIndex {
+model EvidenceRelationship {
+  id                 String                   @id @default(cuid())
+  evidenceId         String
+  relatedEvidenceId  String
+  relationshipType   EvidenceRelationshipType
+  description        String?
+  createdAt          DateTime                 @default(now())
+  
+  // Relations
+  evidence           EvidenceItem             @relation("EvidenceRelationshipSource", fields: [evidenceId], references: [id], onDelete: Cascade)
+  relatedEvidence    EvidenceItem             @relation("EvidenceRelationshipTarget", fields: [relatedEvidenceId], references: [id], onDelete: Cascade)
+  
+  @@unique([evidenceId, relatedEvidenceId])
+  @@map("evidence_relationships")
+}
+
+model TemplateVariable {
+  id               String   @id @default(cuid())
+  templateId       String
+  name             String
+  type             String   // TEXT, NUMBER, DATE, BOOLEAN, SELECT, MULTI_SELECT
+  description      String?
+  defaultValue      String?
+  required         Boolean  @default(false)
+  validationRules  Json?
+  options          String[] // For SELECT and MULTI_SELECT types
+  order            Int      @default(0)
+  
+  // Relations
+  template         DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@unique([templateId, name])
+  @@map("template_variables")
+}
+
+model TemplateVersion {
+  id               String   @id @default(cuid())
+  templateId       String
+  versionNumber    Int
+  filePath         String
+  fileSize         Int
+  checksum         String
+  changeDescription String?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  isActive         Boolean  @default(true)
+  
+  // Relations
+  template         DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdByUser    User             @relation("TemplateVersionCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  
+  @@unique([templateId, versionNumber])
+  @@map("template_versions")
+}
+
+// Financial Management Models
+model Fee {
+  id            String       @id @default(cuid())
+  description   String
+  amount        Float
+  method        BillingMethod
+  status        FeeStatus    @default(DRAFT)
+  
+  // Time information
+  dueDate       DateTime
+  paidDate      DateTime?
+  
+  // Relations
+  caseId        String?
+  clientId      String
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Relations
+  case          Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+  
+  @@map("fees")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  amount      Float
+  method      PaymentMethod
+  transactionId String?
+  notes       String?
+  
+  // Relations
+  feeId       String?
+  invoiceId   String?
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt()
+  
+  // Relations
+  fee         Fee?          @relation(fields: [feeId], references: [id], onDelete: SetNull)
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  
+  @@map("payments")
+}
+
+model TimeEntry {
   id          String   @id @default(cuid())
-  entityId    String
-  entityType  String
-  content     String
-  metadata    Json?
+  description String
+  hours       Float
+  rate        Float
+  
+  // Time information
+  date        DateTime
+  startTime   DateTime?
+  endTime     DateTime?
+  
+  // Relations
+  caseId      String?
+  userId      String
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  // Relations
+  case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserTimeEntries", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("time_entries")
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  isPrivate   Boolean  @default(false)
+  
+  // Relations
+  caseId      String?
+  userId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  case        Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notes")
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  position    String?
+  company     String?
+  relationship String?  // 与客户的关系
+  
+  // Relations
+  clientId    String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("contacts")
+}
+
+// Financial Enums
+enum BillingMethod {
+  FIXED_FEE
+  HOURLY
+  CONTINGENCY
+  PERCENTAGE
+}
+
+enum FeeStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  WECHAT_PAY
+  ALIPAY
+  CREDIT_CARD
+}
+
+// Document Share Permission Enum
+enum DocumentSharePermission {
+  VIEW
+  COMMENT
+  EDIT
+  DOWNLOAD
+}
+
+// Additional Models for Advanced Features
+model SearchIndex {
+  id              String   @id @default(cuid())
+  entityId        String
+  entityType      String
+  title           String
+  content         String
+  processedContent String?
+  tags            String[]
+  vector          Float[]
+  metadata        Json?
+  language        String   @default("zh-CN")
+  relevanceScore  Float?   @default(0)
+  viewCount       Int      @default(0)
+  lastAccessedAt  DateTime?
+  isPublished     Boolean  @default(true)
+  accessLevel     String   @default("public")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
   @@map("search_index")
+  @@index([entityType])
+  @@index([language])
+  @@index([isPublished])
+  @@index([accessLevel])
+  @@index([createdAt])
+}
+
+// Knowledge Base Models
+model KnowledgeBaseArticle {
+  id              String                    @id @default(cuid())
+  title           String
+  slug            String                    @unique
+  content         String
+  summary         String?
+  contentType     KnowledgeBaseContentType
+  status          KnowledgeBaseStatus       @default(DRAFT)
+  accessLevel     KnowledgeBaseAccessLevel  @default(INTERNAL)
+  language        String                    @default("zh-CN")
+  tags            String[]
+  categories      String[]
+  authorId        String
+  reviewerId      String?
+  publishedAt     DateTime?
+  viewCount       Int                       @default(0)
+  likeCount       Int                       @default(0)
+  shareCount      Int                       @default(0)
+  isFeatured      Boolean                   @default(false)
+  metadata        Json?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  
+  author          User                      @relation("KnowledgeBaseAuthor", fields: [authorId], references: [id])
+  reviewer        User?                     @relation("KnowledgeBaseReviewer", fields: [reviewerId], references: [id])
+  searchIndex     SearchIndex?              @relation("KnowledgeBaseSearchIndex", fields: [id], references: [entityId])
+  views           KnowledgeBaseView[]
+  interactions    KnowledgeBaseInteraction[]
+  
+  @@map("knowledge_base_articles")
+  @@index([contentType])
+  @@index([status])
+  @@index([accessLevel])
+  @@index([authorId])
+  @@index([publishedAt])
+  @@index([language])
+}
+
+model KnowledgeBaseCategory {
+  id          String                    @id @default(cuid())
+  name        String                    @unique
+  description String?
+  slug        String                    @unique
+  parentId    String?
+  sortOrder   Int                       @default(0)
+  isActive    Boolean                   @default(true)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  
+  parent      KnowledgeBaseCategory?    @relation("KnowledgeBaseCategoryHierarchy", fields: [parentId], references: [id])
+  children    KnowledgeBaseCategory[]   @relation("KnowledgeBaseCategoryHierarchy")
+  articles    KnowledgeBaseArticle[]
+  
+  @@map("knowledge_base_categories")
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model KnowledgeBaseComment {
+  id          String   @id @default(cuid())
+  articleId   String
+  authorId    String
+  content     String
+  isResolved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  article     KnowledgeBaseArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author      User                 @relation(fields: [authorId], references: [id])
+  
+  @@map("knowledge_base_comments")
+  @@index([articleId])
+  @@index([authorId])
+  @@index([isResolved])
+}
+
+model SearchAnalytics {
+  id               String   @id @default(cuid())
+  query            String
+  resultsCount     Int
+  clickThroughRate Float?
+  userId           String?
+  sessionId        String?
+  filters          Json?
+  sortBy           String?
+  processingTime   Int
+  createdAt        DateTime @default(now())
+  
+  @@map("search_analytics")
+  @@index([query])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Knowledge Base Analytics Models
+model KnowledgeBaseView {
+  id                   String   @id @default(cuid())
+  articleId            String
+  userId               String?
+  sessionId            String?
+  readTime             Int?     // Time spent reading in seconds
+  completionPercentage Float?   // Percentage of article read
+  referrer             String?
+  utmSource            String?
+  utmMedium            String?
+  utmCampaign          String?
+  createdAt            DateTime @default(now())
+  
+  // Relations
+  article KnowledgeBaseArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  
+  @@map("knowledge_base_views")
+  @@index([articleId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model KnowledgeBaseInteraction {
+  id              String                        @id @default(cuid())
+  articleId       String
+  userId          String
+  interactionType KnowledgeBaseInteractionType
+  targetId        String?                       // For comments or helpful votes
+  content         String?                       // For comments
+  metadata        Json?                         // Additional interaction data
+  createdAt       DateTime                      @default(now())
+  
+  // Relations
+  article KnowledgeBaseArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  
+  @@map("knowledge_base_interactions")
+  @@index([articleId])
+  @@index([userId])
+  @@index([interactionType])
+  @@index([createdAt])
+}
+
+model KnowledgeBaseSearchActivity {
+  id             String   @id @default(cuid())
+  query          String
+  userId         String?
+  sessionId      String?
+  resultsCount   Int
+  clickedResults String[] // Array of article IDs that were clicked
+  filters        Json?
+  responseTime   Int      // Response time in milliseconds
+  success        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  
+  @@map("knowledge_base_search_activity")
+  @@index([query])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Knowledge Base Analytics Enums
+enum KnowledgeBaseInteractionType {
+  LIKE
+  COMMENT
+  SHARE
+  BOOKMARK
+  HELPFUL_VOTE
+  DOWNLOAD
+  PRINT
+}
+
+// Knowledge Base Integration Models
+model KnowledgeBaseIntegration {
+  id           String   @id @default(cuid())
+  name         String
+  type         String   // webhook, api, database, message_queue
+  endpoint     String
+  headers      Json?
+  auth         Json?    // Authentication configuration
+  events       String[] // Event types this integration handles
+  active       Boolean  @default(true)
+  retryPolicy  Json     // Retry configuration
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@map("knowledge_base_integrations")
+}
+
+model KnowledgeBaseIntegrationEvent {
+  id         String   @id @default(cuid())
+  type       String
+  source     String
+  payload    Json
+  timestamp  DateTime @default(now())
+  processed  Boolean  @default(false)
+  processedAt DateTime?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@map("knowledge_base_integration_events")
+  @@index([type])
+  @@index([source])
+  @@index([processed])
+  @@index([timestamp])
 }
 
 model AuditLog {
@@ -1192,49 +1164,6 @@ model AuditLog {
   createdAt   DateTime @default(now())
   
   @@map("audit_logs")
-}
-
-// Document Management Enums
-enum DocumentSharePermission {
-  VIEW
-  COMMENT
-  EDIT
-  DOWNLOAD
-}
-
-enum WorkflowStatus {
-  DRAFT
-  IN_PROGRESS
-  REVIEW
-  APPROVED
-  REJECTED
-  COMPLETED
-}
-
-enum WorkflowStepStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  SKIPPED
-  REJECTED
-}
-
-enum EvidenceType {
-  PHYSICAL
-  DIGITAL
-  DOCUMENT
-  PHOTO
-  VIDEO
-  AUDIO
-  TESTIMONY
-  EXPERT_REPORT
-}
-
-enum EvidenceStatus {
-  ACTIVE
-  ARCHIVED
-  DESTROYED
-  COMPROMISED
 }
 
 // Notification Models
@@ -1348,5 +1277,352 @@ enum EmailPriority {
   MEDIUM
   HIGH
   URGENT
->>>>>>> epic/law-firm-pro
+}
+
+// Additional Financial Models
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique
+  caseId          String?
+  clientId        String
+  userId          String
+  status          InvoiceStatus @default(DRAFT)
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime
+  subtotal        Float
+  taxRate         Float         @default(0.06)
+  taxAmount       Float
+  total           Float
+  currency        String        @default("CNY")
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  case     Case?      @relation(fields: [caseId], references: [id])
+  client   ClientProfile @relation(fields: [clientId], references: [id])
+  user     User       @relation(fields: [userId], references: [id])
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String           @id @default(cuid())
+  invoiceId   String
+  type        InvoiceItemType
+  description String
+  quantity    Float            @default(1)
+  unitPrice   Float
+  amount      Float
+  taxRate     Float            @default(0.06)
+  taxAmount   Float
+  total       Float
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model BillingNode {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  caseId      String
+  phase       String
+  order       Int
+  amount      Float
+  dueDate     DateTime?
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("billing_nodes")
+}
+
+model FeeStructure {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  caseType    String
+  feeType     FeeType
+  rate        Float?
+  percentage  Float?
+  minimum     Float?
+  maximum     Float?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("fee_structures")
+}
+
+model Expense {
+  id          String           @id @default(cuid())
+  caseId      String?
+  userId      String
+  category    ExpenseCategory
+  description String
+  amount      Float
+  date        DateTime
+  isBillable  Boolean          @default(true)
+  isBilled    Boolean          @default(false)
+  receiptUrl  String?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  case Case? @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model TrustAccount {
+  id          String   @id @default(cuid())
+  clientId    String
+  caseId      String?
+  balance     Float    @default(0)
+  currency    String   @default("CNY")
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  client   ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  case     Case?        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  transactions TrustTransaction[]
+
+  @@map("trust_accounts")
+}
+
+model TrustTransaction {
+  id             String               @id @default(cuid())
+  trustAccountId String
+  type           TrustTransactionType
+  amount         Float
+  description    String
+  reference      String?
+  status         String               @default("pending")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  // Relations
+  trustAccount TrustAccount @relation(fields: [trustAccountId], references: [id], onDelete: Cascade)
+
+  @@map("trust_transactions")
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  gateway   String
+  payload   String
+  status    String   @default("PENDING")
+  error     String?
+  retryCount Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("webhook_logs")
+}
+
+// Financial Enums
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum InvoiceItemType {
+  TIME_ENTRY
+  EXPENSE
+  FEE
+  DISCOUNT
+  TAX
+  BILLING_NODE
+}
+
+enum FeeType {
+  HOURLY
+  FLAT
+  CONTINGENCY
+  RETAINER
+  HYBRID
+}
+
+enum ExpenseCategory {
+  TRAVEL
+  MEALS
+  ACCOMMODATION
+  SUPPLIES
+  POSTAGE
+  COURT_FEES
+  EXPERT_WITNESS
+  RESEARCH
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum TrustTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  FEE_PAYMENT
+  REFUND
+}
+
+// Integration Management Enums
+enum IntegrationService {
+  PACER
+  STATE_COURTS
+  STRIPE
+  PAYPAL
+  LEXIS_NEXIS
+  WESTLAW
+  GOOGLE_DRIVE
+  DROPBOX
+  TWILIO
+  SENDGRID
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  MAINTENANCE
+}
+
+enum CircuitBreakerState {
+  CLOSED
+  OPEN
+  HALF_OPEN
+}
+
+enum WebhookEventType {
+  PAYMENT_SUCCESS
+  PAYMENT_FAILURE
+  COURT_FILING_UPDATE
+  DOCUMENT_PROCESSED
+  COMMUNICATION_SENT
+  SERVICE_STATUS_CHANGE
+}
+
+// Integration Management Models
+model ApiKey {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  userId      String
+  service     IntegrationService
+  permissions String[] // JSON array of permissions
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model IntegrationConfig {
+  id        String           @id @default(cuid())
+  service   IntegrationService @unique
+  config    Json             // Service-specific configuration
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("integration_configs")
+}
+
+model IntegrationLog {
+  id          String   @id @default(cuid())
+  service     IntegrationService
+  operation   String
+  requestId   String
+  userId      String?
+  status      Int      // HTTP status code
+  duration    Int      // Response time in milliseconds
+  error       String?
+  metadata    Json?    // Additional metadata
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@map("integration_logs")
+}
+
+model CircuitBreakerLog {
+  id        String             @id @default(cuid())
+  service   IntegrationService
+  oldState  CircuitBreakerState
+  newState  CircuitBreakerState
+  reason    String?
+  createdAt DateTime           @default(now())
+
+  @@map("circuit_breaker_logs")
+}
+
+model RateLimitLog {
+  id          String   @id @default(cuid())
+  service     IntegrationService
+  identifier  String   // User ID or IP address
+  action      String   // 'allowed', 'blocked', 'reset'
+  count       Int
+  windowStart DateTime
+  windowEnd   DateTime
+  createdAt   DateTime @default(now())
+
+  @@map("rate_limit_logs")
+}
+
+model WebhookLog {
+  id        String           @id @default(cuid())
+  service   IntegrationService
+  eventType WebhookEventType
+  payload   Json             // Webhook payload
+  signature String?
+  processed Boolean          @default(false)
+  error     String?
+  createdAt DateTime         @default(now())
+
+  @@map("webhook_logs")
+}
+
+model UserPermission {
+  id        String   @id @default(cuid())
+  userId    String
+  service   IntegrationService
+  action    String   // 'read', 'write', 'admin'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, service, action])
+  @@map("user_permissions")
 }

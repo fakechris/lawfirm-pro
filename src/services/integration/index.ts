@@ -2,6 +2,14 @@ export { IntegrationGateway } from './IntegrationGateway';
 export { IntegrationOrchestrator } from './IntegrationOrchestrator';
 export { IntegrationMonitor } from './IntegrationMonitor';
 
+// Import real service implementations
+import { PACERService as RealPACERService } from '../../integrations/courts/PACERService';
+import { StateCourtService } from '../../integrations/courts/StateCourtService';
+import { StripeService as RealStripeService } from '../../integrations/payments/StripeService';
+import { PayPalService as RealPayPalService } from '../../integrations/payments/PayPalService';
+import { LexisNexisService as RealLexisNexisService } from '../../integrations/legal/LexisNexisService';
+import { WestlawService as RealWestlawService } from '../../integrations/legal/WestlawService';
+
 // Re-export types
 export type {
   IntegrationRequest,
@@ -104,15 +112,15 @@ export class IntegrationServiceFactory {
   static createService(serviceType: string, config: ServiceConfiguration): BaseIntegrationService {
     switch (serviceType) {
       case 'pacer':
-        return new PACERService(config);
+        return new RealPACERService(config);
       case 'stripe':
-        return new StripeService(config);
+        return new RealStripeService(config);
       case 'paypal':
-        return new PayPalService(config);
+        return new RealPayPalService(config);
       case 'lexisnexis':
-        return new LexisNexisService(config);
+        return new RealLexisNexisService(config);
       case 'westlaw':
-        return new WestlawService(config);
+        return new RealWestlawService(config);
       default:
         throw new Error(`Unknown service type: ${serviceType}`);
     }

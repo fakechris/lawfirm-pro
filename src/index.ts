@@ -12,14 +12,22 @@ import authRoutes from './routes/auth';
 import caseRoutes from './routes/case';
 import messageRoutes from './routes/message';
 import documentRoutes from './routes/document';
+import documentsRoutes from './routes/documents';
 import financialRoutes from './routes/financial';
 import webhookRoutes from './routes/webhooks';
+import templateRoutes from './routes/templates';
+import evidenceRoutes from './routes/evidence';
+import workflowRoutes from './routes/workflows';
 
 // Import client portal routes
 import clientAuthRoutes from './client/routes/auth';
 import clientCaseRoutes from './client/routes/case';
 import clientMessageRoutes from './client/routes/message';
 import clientDocumentRoutes from './client/routes/document';
+
+// Import integration routes
+import integrationRoutes from './api/integration/gateway';
+import integrationAdminRoutes from './api/integration/admin';
 
 // Register dependencies
 container.registerSingleton(Database);
@@ -86,6 +94,10 @@ class App {
     this.app.use('/api/cases', caseRoutes);
     this.app.use('/api/messages', messageRoutes);
     this.app.use('/api/documents', documentRoutes);
+    this.app.use('/api/documents', documentsRoutes);
+    this.app.use('/api/templates', templateRoutes);
+    this.app.use('/api/evidence', evidenceRoutes);
+    this.app.use('/api/workflows', workflowRoutes);
     this.app.use('/api/financial', financialRoutes);
     this.app.use('/api/webhooks', webhookRoutes);
 
@@ -94,6 +106,10 @@ class App {
     this.app.use('/api/client/cases', clientCaseRoutes);
     this.app.use('/api/client/messages', clientMessageRoutes);
     this.app.use('/api/client/documents', clientDocumentRoutes);
+
+    // Integration routes
+    this.app.use('/api/integration', integrationRoutes);
+    this.app.use('/api/integration/admin', integrationAdminRoutes);
 
     // 404 handler
     this.app.use('*', (req, res) => {
