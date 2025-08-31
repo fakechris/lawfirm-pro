@@ -16,9 +16,13 @@ exports.CaseService = void 0;
 const tsyringe_1 = require("tsyringe");
 const database_1 = require("../utils/database");
 const client_1 = require("@prisma/client");
+const CaseTransitionService_1 = require("./cases/CaseTransitionService");
+const CaseLifecycleService_1 = require("./cases/CaseLifecycleService");
 let CaseService = class CaseService {
     constructor(db) {
         this.db = db;
+        this.transitionService = new CaseTransitionService_1.CaseTransitionService(db);
+        this.lifecycleService = new CaseLifecycleService_1.CaseLifecycleService(db);
     }
     async createCase(caseRequest, attorneyId) {
         const { title, description, caseType, clientId } = caseRequest;
@@ -51,6 +55,7 @@ let CaseService = class CaseService {
                 attorney: true,
             },
         });
+        await this.lifecycleService.initializeCaseLifecycle(caseData.id, caseType, attorney.userId);
         return this.transformCaseResponse(caseData);
     }
     async getCasesByClientId(clientId) {
@@ -179,9 +184,15 @@ let CaseService = class CaseService {
     }
     async updateCaseStatus(caseId, status, userId, userRole) {
         await this.verifyCaseAccess(caseId, userId, userRole);
-        const updatedCase = await this.db.client.case.update({
+        const currentCase = await this.db.client.case.findUnique({
+            where: { id: caseId }
+        });
+        if (!currentCase) {
+            throw new Error('Case not found');
+        }
+        await this.lifecycleService.updateCaseStatus(caseId, status, userId, 'Status updated via case service');
+        const updatedCase = await this.db.client.case.findUnique({
             where: { id: caseId },
-            data: { status },
             include: {
                 client: true,
                 attorney: true,
@@ -191,9 +202,29 @@ let CaseService = class CaseService {
     }
     async updateCasePhase(caseId, phase, userId, userRole) {
         await this.verifyCaseAccess(caseId, userId, userRole);
-        const updatedCase = await this.db.client.case.update({
+        const currentCase = await this.db.client.case.findUnique({
             where: { id: caseId },
-            data: { phase },
+            include: {
+                client: { include: { user: true } },
+                attorney: { include: { user: true } },
+            },
+        });
+        if (!currentCase) {
+            throw new Error('Case not found');
+        }
+        const transitionRequest = {
+            caseId,
+            targetPhase: phase,
+            userId,
+            userRole,
+            reason: 'Phase transition requested via case service'
+        };
+        const transitionResult = await this.transitionService.requestTransition(transitionRequest);
+        if (!transitionResult.success) {
+            throw new Error(`Phase transition failed: ${transitionResult.errors?.join(', ') || 'Unknown error'}`);
+        }
+        const updatedCase = await this.db.client.case.findUnique({
+            where: { id: caseId },
             include: {
                 client: true,
                 attorney: true,
@@ -402,6 +433,36 @@ let CaseService = class CaseService {
                 },
             })),
         };
+    }
+    async requestCaseTransition(transitionRequest) {
+        await this.verifyCaseAccess(transitionRequest.caseId, transitionRequest.userId, transitionRequest.userRole);
+        return await this.transitionService.requestTransition(transitionRequest);
+    }
+    async getCaseProgress(caseId) {
+        const caseData = await this.db.client.case.findUnique({
+            where: { id: caseId }
+        });
+        if (!caseData) {
+            throw new Error('Case not found');
+        }
+        return await this.lifecycleService.getCaseProgress(caseId);
+    }
+    async getAvailableTransitions(caseId, userId, userRole) {
+        await this.verifyCaseAccess(caseId, userId, userRole);
+        return await this.transitionService.getAvailableTransitions(caseId, userRole);
+    }
+    async getCaseTransitionHistory(caseId, userId, userRole) {
+        await this.verifyCaseAccess(caseId, userId, userRole);
+        return await this.transitionService.getTransitionHistory(caseId);
+    }
+    async getPendingApprovals(userId, userRole) {
+        return await this.transitionService.getPendingApprovals(userId, userRole);
+    }
+    async approveTransition(transitionId, approvedBy, approvedByRole, reason) {
+        return await this.transitionService.approveTransition(transitionId, approvedBy, approvedByRole, reason);
+    }
+    async rejectTransition(transitionId, approvedBy, approvedByRole, reason) {
+        return await this.transitionService.rejectTransition(transitionId, approvedBy, approvedByRole, reason);
     }
     async verifyCaseAccess(caseId, userId, userRole) {
         if (userRole === client_1.UserRole.CLIENT) {

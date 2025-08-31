@@ -64,8 +64,8 @@ export declare class FinancialService {
         items: Omit<InvoiceItem, 'id' | 'invoiceId' | 'createdAt' | 'updatedAt'>[];
     }): Promise<{
         user: {
-            email: string;
             password: string;
+            email: string;
             firstName: string;
             lastName: string;
             role: import(".prisma/client").$Enums.UserRole;
@@ -129,8 +129,8 @@ export declare class FinancialService {
     }>;
     getInvoiceById(id: string): Promise<({
         user: {
-            email: string;
             password: string;
+            email: string;
             firstName: string;
             lastName: string;
             role: import(".prisma/client").$Enums.UserRole;
@@ -304,8 +304,8 @@ export declare class FinancialService {
     }>;
     getTimeEntriesByCase(caseId: string): Promise<({
         user: {
-            email: string;
             password: string;
+            email: string;
             firstName: string;
             lastName: string;
             role: import(".prisma/client").$Enums.UserRole;
@@ -394,8 +394,8 @@ export declare class FinancialService {
     }>;
     getExpensesByCase(caseId: string): Promise<({
         user: {
-            email: string;
             password: string;
+            email: string;
             firstName: string;
             lastName: string;
             role: import(".prisma/client").$Enums.UserRole;

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
+const integration_1 = require("./integration");
 dotenv_1.default.config();
 exports.config = {
     port: process.env.PORT || 3000,
@@ -78,6 +79,7 @@ exports.config = {
         minContentLength: parseInt(process.env.SEARCH_MIN_CONTENT_LENGTH || '50'),
         maxContentLength: parseInt(process.env.SEARCH_MAX_CONTENT_LENGTH || '1000000'),
         batchSize: parseInt(process.env.SEARCH_BATCH_SIZE || '100')
-    }
+    },
+    integration: integration_1.integrationConfig
 };
 //# sourceMappingURL=index.js.map

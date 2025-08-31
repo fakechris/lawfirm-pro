@@ -28,6 +28,8 @@ model User {
   invoices      Invoice[]
   timeEntries   TimeEntry[]
   expenses      Expense[]
+  notifications Notification[]
+  notificationPreference NotificationPreference?
 
   @@map("users")
 }
@@ -144,11 +146,28 @@ model Task {
   completedAt DateTime?
   
   // Relations
-  case        Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  assignee    User       @relation("TaskAssignee", fields: [assignedTo], references: [id])
-  creator     User       @relation("TaskCreator", fields: [assignedBy], references: [id])
+  case        Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignee    User               @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  creator     User               @relation("TaskCreator", fields: [assignedBy], references: [id])
+  dependencies TaskDependency[]  @relation("TaskDependencies")
+  dependents   TaskDependency[]  @relation("TaskDependents")
 
   @@map("tasks")
+}
+
+model TaskDependency {
+  id              String   @id @default(cuid())
+  taskId          String
+  dependsOnTaskId String
+  dependencyType  DependencyType @default(BLOCKING)
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  task            Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTask   Task @relation("TaskDependents", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+  
+  @@unique([taskId, dependsOnTaskId])
+  @@map("task_dependencies")
 }
 
 // Enums
@@ -219,6 +238,13 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+enum DependencyType {
+  BLOCKING
+  SEQUENTIAL
+  PARALLEL
+  SUGGESTED
 }
 
 // Financial Models
@@ -705,4 +731,117 @@ enum EvidenceStatus {
   ARCHIVED
   DESTROYED
   COMPROMISED
+}
+
+// Notification Models
+model Notification {
+  id        String            @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean           @default(false)
+  priority  NotificationPriority @default(MEDIUM)
+  expiresAt DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  
+  // Relations
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                   String                   @id @default(cuid())
+  userId               String                   @unique
+  emailEnabled         Boolean                  @default(true)
+  inAppEnabled         Boolean                  @default(true)
+  taskAssignment      Boolean                  @default(true)
+  taskDeadline        Boolean                  @default(true)
+  taskCompletion      Boolean                  @default(true)
+  taskEscalation      Boolean                  @default(true)
+  caseUpdates         Boolean                  @default(true)
+  messages            Boolean                  @default(true)
+  emailFrequency      EmailFrequency           @default(IMMEDIATE)
+  quietHoursStart     String?                  // Format: "HH:mm"
+  quietHoursEnd       String?                  // Format: "HH:mm"
+  timezone            String                   @default("Asia/Shanghai")
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt()
+  
+  // Relations
+  user                User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notification_preferences")
+}
+
+model EmailQueue {
+  id           String           @id @default(cuid())
+  userId       String
+  to           String
+  subject      String
+  htmlContent  String
+  textContent  String?
+  status       EmailStatus      @default(PENDING)
+  priority     EmailPriority    @default(MEDIUM)
+  sendAt       DateTime         @default(now())
+  sentAt       DateTime?
+  failedAt     DateTime?
+  errorMessage String?
+  retryCount   Int              @default(0)
+  metadata     Json?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt()
+  
+  @@map("email_queue")
+}
+
+// Notification Enums
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_UPDATED
+  TASK_COMPLETED
+  TASK_DEADLINE_REMINDER
+  TASK_ESCALATION
+  TASK_CANCELLED
+  CASE_UPDATED
+  MESSAGE_RECEIVED
+  SYSTEM_ALERT
+  DOCUMENT_SHARED
+  DEADLINE_APPROACHING
+  OVERDUE_TASK
+  PRIORITY_CHANGE
+  DEPENDENCY_BLOCKED
+  WORKFLOW_COMPLETED
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum EmailFrequency {
+  IMMEDIATE
+  HOURLY
+  DAILY
+  WEEKLY
+}
+
+enum EmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  RETRYING
+}
+
+enum EmailPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
