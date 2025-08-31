@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { getPaymentConfig } from '../../config/financial';
 import { PaymentMethod, PaymentStatus } from '../models/financial';
+import { AlipayService } from './AlipayService';
+import { WechatPayService } from './WechatPayService';
 
 export interface PaymentGatewayRequest {
   amount: number;
@@ -40,9 +42,13 @@ export interface PaymentWebhookPayload {
 export class PaymentGatewayService {
   private prisma: PrismaClient;
   private config = getPaymentConfig();
+  private alipayService: AlipayService;
+  private wechatPayService: WechatPayService;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
+    this.alipayService = new AlipayService();
+    this.wechatPayService = new WechatPayService();
   }
 
   // Initialize payment with specified gateway
@@ -172,9 +178,19 @@ export class PaymentGatewayService {
   }
 
   private verifyWebhookSignature(gateway: PaymentMethod, payload: any): boolean {
-    // In production, implement proper signature verification
-    // For now, return true for development
-    return process.env.NODE_ENV === 'development';
+    try {
+      switch (gateway) {
+        case PaymentMethod.ALIPAY:
+          return this.alipayService.verifyWebhookSignature(payload);
+        case PaymentMethod.WECHAT_PAY:
+          return this.wechatPayService.verifyWebhookSignature(payload);
+        default:
+          return process.env.NODE_ENV === 'development';
+      }
+    } catch (error) {
+      console.error('Webhook signature verification failed:', error);
+      return false;
+    }
   }
 
   private parseWebhookPayload(gateway: PaymentMethod, payload: any): PaymentWebhookPayload {
@@ -216,19 +232,35 @@ export class PaymentGatewayService {
     });
   }
 
-  // Alipay specific methods (to be implemented)
+  // Alipay specific methods
   private async initializeAlipayPayment(request: PaymentGatewayRequest): Promise<PaymentGatewayResponse> {
-    // Placeholder implementation
-    return {
-      success: true,
-      paymentUrl: 'https://alipay.com/pay',
-      message: 'Alipay payment initialized',
-    };
+    try {
+      const response = await this.alipayService.initializePayment(request);
+      return {
+        success: response.success,
+        transactionId: response.transactionId,
+        paymentUrl: response.paymentUrl,
+        qrCode: response.qrCode,
+        message: response.message,
+        error: response.error,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'Alipay payment initialization failed',
+      };
+    }
   }
 
   private async checkAlipayStatus(transactionId: string): Promise<PaymentStatus> {
-    // Placeholder implementation
-    return PaymentStatus.COMPLETED;
+    try {
+      const status = await this.alipayService.checkPaymentStatus(transactionId);
+      return this.mapAlipayStatus(status);
+    } catch (error) {
+      console.error('Alipay status check failed:', error);
+      return PaymentStatus.FAILED;
+    }
   }
 
   private async refundAlipayPayment(
@@ -236,38 +268,69 @@ export class PaymentGatewayService {
     amount?: number,
     reason?: string
   ): Promise<PaymentGatewayResponse> {
-    // Placeholder implementation
-    return {
-      success: true,
-      message: 'Alipay refund processed',
-    };
+    try {
+      const response = await this.alipayService.refundPayment(transactionId, amount, reason);
+      return {
+        success: response.success,
+        transactionId: response.transactionId,
+        message: response.message,
+        error: response.error,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'Alipay refund failed',
+      };
+    }
   }
 
   private parseAlipayWebhook(payload: any): PaymentWebhookPayload {
-    // Placeholder implementation
-    return {
-      transactionId: payload.trade_no,
-      orderId: payload.out_trade_no,
-      amount: parseFloat(payload.total_amount),
-      status: payload.trade_status === 'TRADE_SUCCESS' ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
-      gateway: 'ALIPAY',
-      timestamp: new Date(),
-    };
+    try {
+      const webhookData = this.alipayService.parseWebhookPayload(payload);
+      return {
+        transactionId: webhookData.transactionId,
+        orderId: webhookData.orderId,
+        amount: webhookData.amount,
+        status: webhookData.status as PaymentStatus,
+        gateway: 'ALIPAY',
+        timestamp: webhookData.timestamp,
+        signature: payload.sign,
+      };
+    } catch (error) {
+      console.error('Alipay webhook parsing failed:', error);
+      throw new Error('Failed to parse Alipay webhook');
+    }
   }
 
-  // WeChat Pay specific methods (to be implemented)
+  // WeChat Pay specific methods
   private async initializeWechatPayment(request: PaymentGatewayRequest): Promise<PaymentGatewayResponse> {
-    // Placeholder implementation
-    return {
-      success: true,
-      qrCode: 'wechat://pay',
-      message: 'WeChat Pay payment initialized',
-    };
+    try {
+      const response = await this.wechatPayService.initializePayment(request);
+      return {
+        success: response.success,
+        transactionId: response.transactionId,
+        qrCode: response.qrCode,
+        message: response.message,
+        error: response.error,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'WeChat Pay payment initialization failed',
+      };
+    }
   }
 
   private async checkWechatStatus(transactionId: string): Promise<PaymentStatus> {
-    // Placeholder implementation
-    return PaymentStatus.COMPLETED;
+    try {
+      const status = await this.wechatPayService.checkPaymentStatus(transactionId);
+      return this.mapWechatStatus(status);
+    } catch (error) {
+      console.error('WeChat Pay status check failed:', error);
+      return PaymentStatus.FAILED;
+    }
   }
 
   private async refundWechatPayment(
@@ -275,23 +338,39 @@ export class PaymentGatewayService {
     amount?: number,
     reason?: string
   ): Promise<PaymentGatewayResponse> {
-    // Placeholder implementation
-    return {
-      success: true,
-      message: 'WeChat Pay refund processed',
-    };
+    try {
+      const response = await this.wechatPayService.refundPayment(transactionId, amount, reason);
+      return {
+        success: response.success,
+        transactionId: response.transactionId,
+        message: response.message,
+        error: response.error,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'WeChat Pay refund failed',
+      };
+    }
   }
 
   private parseWechatWebhook(payload: any): PaymentWebhookPayload {
-    // Placeholder implementation
-    return {
-      transactionId: payload.transaction_id,
-      orderId: payload.out_trade_no,
-      amount: parseFloat(payload.total_fee) / 100, // Convert from fen to yuan
-      status: payload.result_code === 'SUCCESS' ? PaymentStatus.COMPLETED : PaymentStatus.FAILED,
-      gateway: 'WECHAT_PAY',
-      timestamp: new Date(),
-    };
+    try {
+      const webhookData = this.wechatPayService.parseWebhookPayload(payload);
+      return {
+        transactionId: webhookData.transactionId,
+        orderId: webhookData.orderId,
+        amount: webhookData.amount,
+        status: webhookData.status as PaymentStatus,
+        gateway: 'WECHAT_PAY',
+        timestamp: webhookData.timestamp,
+        signature: payload.sign,
+      };
+    } catch (error) {
+      console.error('WeChat Pay webhook parsing failed:', error);
+      throw new Error('Failed to parse WeChat Pay webhook');
+    }
   }
 
   // Bank transfer initialization
@@ -302,6 +381,105 @@ export class PaymentGatewayService {
       success: true,
       message: 'Bank transfer instructions generated',
       transactionId: `BT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    };
+  }
+
+  // Status mapping methods
+  private mapAlipayStatus(alipayStatus: string): PaymentStatus {
+    const statusMap: { [key: string]: PaymentStatus } = {
+      'WAIT_BUYER_PAY': PaymentStatus.PENDING,
+      'TRADE_CLOSED': PaymentStatus.FAILED,
+      'TRADE_SUCCESS': PaymentStatus.COMPLETED,
+      'TRADE_FINISHED': PaymentStatus.COMPLETED,
+      'TRADE_PENDING': PaymentStatus.PENDING,
+    };
+    return statusMap[alipayStatus] || PaymentStatus.FAILED;
+  }
+
+  private mapWechatStatus(wechatStatus: string): PaymentStatus {
+    const statusMap: { [key: string]: PaymentStatus } = {
+      'SUCCESS': PaymentStatus.COMPLETED,
+      'REFUND': PaymentStatus.REFUNDED,
+      'NOTPAY': PaymentStatus.PENDING,
+      'CLOSED': PaymentStatus.FAILED,
+      'REVOKED': PaymentStatus.FAILED,
+      'USERPAYING': PaymentStatus.PENDING,
+      'PAYERROR': PaymentStatus.FAILED,
+    };
+    return statusMap[wechatStatus] || PaymentStatus.FAILED;
+  }
+
+  // Enhanced payment methods for additional functionality
+  async generateQRCode(gateway: PaymentMethod, request: PaymentGatewayRequest): Promise<PaymentGatewayResponse> {
+    try {
+      switch (gateway) {
+        case PaymentMethod.ALIPAY:
+          return await this.alipayService.generateQRCode(request);
+        case PaymentMethod.WECHAT_PAY:
+          return await this.wechatPayService.initializePayment(request);
+        default:
+          throw new Error(`QR code generation not supported for gateway: ${gateway}`);
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'QR code generation failed',
+      };
+    }
+  }
+
+  async closePayment(gateway: PaymentMethod, transactionId: string): Promise<PaymentGatewayResponse> {
+    try {
+      switch (gateway) {
+        case PaymentMethod.ALIPAY:
+          return await this.alipayService.closePayment(transactionId);
+        case PaymentMethod.WECHAT_PAY:
+          return await this.wechatPayService.closePayment(transactionId);
+        default:
+          throw new Error(`Payment closing not supported for gateway: ${gateway}`);
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'Payment closing failed',
+      };
+    }
+  }
+
+  // Get supported payment methods
+  getSupportedPaymentMethods(): PaymentMethod[] {
+    const methods: PaymentMethod[] = [];
+    
+    if (this.config.supportedGateways.alipay?.enabled) {
+      methods.push(PaymentMethod.ALIPAY);
+    }
+    
+    if (this.config.supportedGateways.wechat?.enabled) {
+      methods.push(PaymentMethod.WECHAT_PAY);
+    }
+    
+    if (this.config.supportedGateways.bank?.enabled) {
+      methods.push(PaymentMethod.BANK_TRANSFER);
+    }
+
+    return methods;
+  }
+
+  // Validate payment method configuration
+  validatePaymentMethod(method: PaymentMethod): boolean {
+    return this.getSupportedPaymentMethods().includes(method);
+  }
+
+  // Get payment method limits
+  getPaymentMethodLimits(method: PaymentMethod): { min: number; max: number } {
+    const processing = this.config.processing;
+    const gatewayConfig = this.config.supportedGateways[method.toLowerCase()];
+    
+    return {
+      min: processing.minAmount,
+      max: Math.min(processing.maxAmount, gatewayConfig?.maxAmount || processing.maxAmount),
     };
   }
 }
