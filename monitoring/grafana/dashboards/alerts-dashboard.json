@@ -1,0 +1,168 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Law Firm Pro - Alerts & Incidents",
+    "description": "Alert monitoring and incident management dashboard",
+    "tags": ["lawfirmpro", "alerts"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Alerts",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ALERTS{alertstate=\"firing\"}",
+            "legendFormat": "{{alertname}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Alert History",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "changes(ALERTS{alertstate=\"firing\"}[1h])",
+            "legendFormat": "Alerts fired"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        }
+      },
+      {
+        "id": 3,
+        "title": "Alert Severity Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "ALERTS{alertstate=\"firing\"}",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        }
+      },
+      {
+        "id": 4,
+        "title": "System Health Score",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(up{job=~\"lawfirmpro-app|integration-services\"} == 1) / count(up{job=~\"lawfirmpro-app|integration-services\"}) * 100",
+            "legendFormat": "Health Score"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "colorMode": "value",
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "green",
+                  "value": 95
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 20
+        }
+      },
+      {
+        "id": 5,
+        "title": "Mean Time To Resolution",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(ALERTS_FOR_STATE{alertstate=\"resolved\"} - ALERTS_FOR_STATE{alertstate=\"firing\"})",
+            "legendFormat": "MTTR"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 20
+        }
+      },
+      {
+        "id": 6,
+        "title": "Alert Response Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(alertmanager_notifications_sent_total[5m])",
+            "legendFormat": "Notifications sent"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 20
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+      "list": []
+    }
+  }
+}

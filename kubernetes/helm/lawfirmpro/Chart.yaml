@@ -1,0 +1,27 @@
+apiVersion: v2
+name: lawfirmpro
+description: A Helm chart for Law Firm Pro application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Law Firm Pro Team
+    email: team@lawfirmpro.com
+home: https://lawfirmpro.com
+sources:
+  - https://github.com/fakechris/lawfirm-pro
+keywords:
+  - law
+  - legal
+  - firm
+  - nodejs
+  - express
+dependencies:
+  - name: postgresql
+    version: "^12.1.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "^17.3.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled

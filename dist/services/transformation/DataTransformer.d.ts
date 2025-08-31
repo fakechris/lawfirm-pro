@@ -1,0 +1,46 @@
+import { DataTransformerService, DataTransformer, TransformationConfig, FieldMapping, NormalizationRule } from '../../models/integration';
+export declare class DataTransformerImplementation implements DataTransformerService {
+    private logger;
+    private transformers;
+    constructor();
+    transform(source: any, transformer: DataTransformer): Promise<any>;
+    validateSchema(data: any, schema: any): Promise<boolean>;
+    mapFields(source: any, fieldMapping: FieldMapping[]): Promise<any>;
+    normalizeData(data: any, rules: NormalizationRule[]): Promise<any>;
+    createTransformation(config: TransformationConfig): Promise<DataTransformer>;
+    updateTransformation(id: string, config: TransformationConfig): Promise<DataTransformer>;
+    deleteTransformation(id: string): Promise<void>;
+    private applyTransformationRule;
+    private applyFieldMapping;
+    private applyFieldTransformation;
+    private transformValue;
+    private applyFieldCalculation;
+    private calculateValue;
+    private validateField;
+    private applyFieldFormatting;
+    private formatValue;
+    private applyFieldFilter;
+    private applyFieldAggregation;
+    private aggregateGroup;
+    private applyFieldSplit;
+    private applyFieldJoin;
+    private applyNormalizationRule;
+    private applyCustomTransformation;
+    private applyCustomValidation;
+    private applyCustomNormalization;
+    private validateItemAgainstSchema;
+    private getNestedValue;
+    private formatDate;
+    private formatNumber;
+    private formatCurrency;
+    private formatPercentage;
+    private formatPhone;
+    private formatEmail;
+    private parseBoolean;
+    private hashValue;
+    private encryptValue;
+    private decryptValue;
+    private sanitizeData;
+    private generateTransformerId;
+}
+//# sourceMappingURL=DataTransformer.d.ts.map

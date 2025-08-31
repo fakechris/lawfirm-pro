@@ -1,0 +1,1 @@
+{"version":3,"file":"UserStats.d.ts","sourceRoot":"","sources":["../../../../src/components/knowledge-base/dashboard/UserStats.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAC1B,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,+BAA+B,CAAC;AAExE,UAAU,cAAc;IACtB,SAAS,EAAE,kBAAkB,CAAC;CAC/B;AAED,eAAO,MAAM,SAAS,EAAE,KAAK,CAAC,EAAE,CAAC,cAAc,CAgG9C,CAAC"}

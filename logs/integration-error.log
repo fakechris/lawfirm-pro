@@ -1,0 +1,2 @@
+{"error":"Invalid webhook signature","id":"wh_123","level":"error","message":"Webhook processing failed","service":"integration-gateway","timestamp":"2025-08-31T08:00:58.404Z","type":"stripe.payment_intent.succeeded"}
+{"error":"Invalid webhook signature","id":"wh_123","level":"error","message":"Webhook processing failed","service":"integration-gateway","timestamp":"2025-08-31T10:30:35.421Z","type":"stripe.payment_intent.succeeded"}

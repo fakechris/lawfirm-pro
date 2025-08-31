@@ -1,0 +1,239 @@
+audit:
+  enabled: true
+  level: "COMPREHENSIVE"
+  retention:
+    default_days: 365
+    compliance_days: 2555  # 7 years for compliance
+    security_days: 1825      # 5 years for security events
+    cleanup_schedule: "0 2 * * *"  # Daily at 2 AM
+  
+  logging:
+    format: "structured"
+    include_headers: true
+    include_body: false
+    include_metadata: true
+    sanitize_fields:
+      - "password"
+      - "token"
+      - "secret"
+      - "key"
+      - "authorization"
+  
+  real_time:
+    enabled: true
+    metrics_interval: 60000  # 1 minute
+    anomaly_detection: true
+    anomaly_threshold: 0.1
+    alert_on_anomaly: true
+  
+  export:
+    formats: ["csv", "json", "pdf"]
+    max_records: 100000
+    compression: true
+    encryption: true
+  
+  compliance:
+    pipl:
+      enabled: true
+      data_access_logging: true
+      consent_tracking: true
+      cross_border_logging: true
+      retention_years: 7
+    
+    csl:
+      enabled: true
+      security_event_logging: true
+      access_control_logging: true
+      data_classification_logging: true
+      retention_years: 5
+    
+    dsl:
+      enabled: true
+      data_subject_request_logging: true
+      retention_logging: true
+      deletion_logging: true
+      retention_years: 6
+  
+  events:
+    user_actions:
+      - "LOGIN"
+      - "LOGOUT"
+      - "PROFILE_UPDATE"
+      - "PASSWORD_CHANGE"
+      - "PERMISSION_CHANGE"
+    
+    data_access:
+      - "DOCUMENT_VIEW"
+      - "DOCUMENT_DOWNLOAD"
+      - "CLIENT_VIEW"
+      - "CASE_VIEW"
+      - "SEARCH_QUERY"
+    
+    data_modification:
+      - "DOCUMENT_CREATE"
+      - "DOCUMENT_UPDATE"
+      - "DOCUMENT_DELETE"
+      - "CLIENT_CREATE"
+      - "CLIENT_UPDATE"
+      - "CLIENT_DELETE"
+      - "CASE_CREATE"
+      - "CASE_UPDATE"
+      - "CASE_DELETE"
+    
+    security_events:
+      - "AUTHENTICATION_FAILURE"
+      - "AUTHORIZATION_FAILURE"
+      - "RATE_LIMIT_EXCEEDED"
+      - "SUSPICIOUS_ACTIVITY"
+      - "MALWARE_DETECTED"
+      - "INTRUSION_ATTEMPT"
+    
+    system_events:
+      - "SYSTEM_STARTUP"
+      - "SYSTEM_SHUTDOWN"
+      - "BACKUP_START"
+      - "BACKUP_COMPLETE"
+      - "BACKUP_FAILED"
+      - "CONFIGURATION_CHANGE"
+      - "MAINTENANCE_MODE"
+  
+  severity_levels:
+    INFO:
+      description: "Informational events"
+      actions: ["LOGIN", "LOGOUT", "DOCUMENT_VIEW", "SYSTEM_STARTUP"]
+    
+    WARNING:
+      description: "Warning events requiring attention"
+      actions: ["PROFILE_UPDATE", "PASSWORD_CHANGE", "DOCUMENT_DOWNLOAD", "CONFIGURATION_CHANGE"]
+    
+    ERROR:
+      description: "Error events indicating problems"
+      actions: ["AUTHENTICATION_FAILURE", "AUTHORIZATION_FAILURE", "BACKUP_FAILED"]
+    
+    CRITICAL:
+      description: "Critical events requiring immediate attention"
+      actions: ["RATE_LIMIT_EXCEEDED", "SUSPICIOUS_ACTIVITY", "MALWARE_DETECTED", "INTRUSION_ATTEMPT"]
+  
+  anomaly_detection:
+    enabled: true
+    rules:
+      high_frequency_user:
+        threshold: 100  # actions per hour
+        severity: "WARNING"
+        action: "ALERT"
+      
+      high_failure_rate:
+        threshold: 0.2  # 20% failure rate
+        severity: "ERROR"
+        action: "ALERT"
+      
+      multiple_ips_per_user:
+        threshold: 5    # 5 different IPs
+        time_window: 3600  # 1 hour
+        severity: "WARNING"
+        action: "ALERT"
+      
+      elevated_security_events:
+        threshold: 0.1  # 10% of events are security events
+        severity: "ERROR"
+        action: "ALERT"
+      
+      unusual_time_access:
+        allowed_hours: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]  # 8 AM - 6 PM
+        severity: "WARNING"
+        action: "ALERT"
+      
+      data_bulk_export:
+        threshold: 1000  # records exported
+        time_window: 3600  # 1 hour
+        severity: "CRITICAL"
+        action: "BLOCK"
+  
+  notifications:
+    email:
+      enabled: true
+      recipients:
+        - "security@lawfirmpro.com"
+        - "compliance@lawfirmpro.com"
+      events:
+        - "CRITICAL"
+        - "ERROR"
+        - "ANOMALY_DETECTED"
+    
+    webhook:
+      enabled: true
+      url: "${WEBHOOK_URL}"
+      events:
+        - "CRITICAL"
+        - "ANOMALY_DETECTED"
+    
+    slack:
+      enabled: true
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      channel: "#security-alerts"
+      events:
+        - "CRITICAL"
+        - "ERROR"
+  
+  reporting:
+    automated:
+      enabled: true
+      schedule: "0 9 * * MON"  # Every Monday at 9 AM
+      formats: ["pdf", "csv"]
+      recipients:
+        - "management@lawfirmpro.com"
+        - "compliance@lawfirmpro.com"
+    
+    compliance_reports:
+      pipl:
+        schedule: "0 9 1 * *"  # Monthly on the 1st
+        retention_years: 7
+      
+      csl:
+        schedule: "0 9 1 * *"  # Monthly on the 1st
+        retention_years: 5
+      
+      dsl:
+        schedule: "0 9 1 * *"  # Monthly on the 1st
+        retention_years: 6
+  
+  integration:
+    siem:
+      enabled: true
+      type: "splunk"
+      endpoint: "${SIEM_ENDPOINT}"
+      token: "${SIEM_TOKEN}"
+      index: "lawfirmpro"
+    
+    monitoring:
+      enabled: true
+      type: "prometheus"
+      endpoint: "${PROMETHEUS_ENDPOINT}"
+      metrics:
+        - "audit_events_total"
+        - "audit_events_by_severity"
+        - "audit_events_by_category"
+        - "compliance_violations_total"
+        - "anomaly_detection_count"
+    
+    backup:
+      enabled: true
+      location: "s3://lawfirmpro-audit-logs"
+      schedule: "0 3 * * *"  # Daily at 3 AM
+      retention_days: 2555
+  
+  security:
+    encryption:
+      at_rest: true
+      in_transit: true
+      algorithm: "AES-256"
+    
+    access_control:
+      role_based: true
+      minimum_role: "AUDITOR"
+      ip_whitelist: []
+    
+    integrity:
+      checksum: true
+      digital_signature: true
+      tamper_detection: true

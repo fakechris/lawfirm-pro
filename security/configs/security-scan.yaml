@@ -1,0 +1,253 @@
+# Security Scanning Configuration for Law Firm Pro
+# This configuration defines security scanning parameters and compliance requirements
+
+security_scanning:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  timeout: 3600  # 1 hour timeout
+  
+  # Scan types
+  scan_types:
+    vulnerability_scanning:
+      enabled: true
+      tools:
+        - name: "owasp-zap"
+          enabled: true
+          config:
+            scan_type: "baseline"
+            target_url: "${APP_URL}"
+            api_key: "${ZAP_API_KEY}"
+        - name: "nikto"
+          enabled: true
+          config:
+            target_url: "${APP_URL}"
+            tuning: "x"
+        - name: "nmap"
+          enabled: true
+          config:
+            target: "${DOMAIN}"
+            ports: "80,443,3000,5432,6379"
+    
+    dependency_scanning:
+      enabled: true
+      tools:
+        - name: "npm-audit"
+          enabled: true
+          config:
+            level: "moderate"
+        - name: "snyk"
+          enabled: true
+          config:
+            api_key: "${SNYK_API_KEY}"
+            severity: "high"
+        - name: "retirejs"
+          enabled: true
+          config:
+            severity: "high"
+    
+    code_analysis:
+      enabled: true
+      tools:
+        - name: "semgrep"
+          enabled: true
+          config:
+            rules: "security"
+            config_file: "security/configs/semgrep-rules.yaml"
+        - name: "eslint"
+          enabled: true
+          config:
+            config_file: ".eslintrc.js"
+            plugins: ["security"]
+        - name: "sonarqube"
+          enabled: true
+          config:
+            server_url: "${SONARQUBE_URL}"
+            token: "${SONARQUBE_TOKEN}"
+    
+    container_scanning:
+      enabled: true
+      tools:
+        - name: "trivy"
+          enabled: true
+          config:
+            severity: "CRITICAL,HIGH"
+            format: "json"
+        - name: "clair"
+          enabled: true
+          config:
+            server_url: "${CLAIR_URL}"
+    
+    infrastructure_scanning:
+      enabled: true
+      tools:
+        - name: "prowler"
+          enabled: true
+          config:
+            provider: "aws"
+            regions: "${AWS_REGION}"
+        - name: "tfsec"
+          enabled: true
+          config:
+            config_file: "terraform/"
+
+  # Compliance frameworks
+  compliance:
+    chinese_legal_requirements:
+      enabled: true
+      standards:
+        - "PIPL"  # Personal Information Protection Law
+        - "CSL"   # Cybersecurity Law
+        - "DSL"   # Data Security Law
+      
+      requirements:
+        data_localization:
+          enabled: true
+          regions: ["china"]
+          verification: true
+        
+        consent_management:
+          enabled: true
+          explicit_consent: true
+          withdrawal_allowed: true
+        
+        data_retention:
+          enabled: true
+          max_retention_days: 365
+          auto_deletion: true
+        
+        encryption_standards:
+          enabled: true
+          min_key_length: 256
+          algorithm: "AES-256-GCM"
+        
+        access_control:
+          enabled: true
+          multi_factor_auth: true
+          role_based_access: true
+          audit_trail: true
+        
+        breach_notification:
+          enabled: true
+          notification_window_hours: 72
+          authority_notification: true
+    
+    hipaa:
+      enabled: false  # Not applicable for Chinese law firm
+      requirements:
+        phi_protection: false
+        audit_controls: false
+        access_control: false
+    
+    gdpr:
+      enabled: true  # Applicable for international clients
+      requirements:
+        data_subject_rights: true
+        consent_management: true
+        breach_notification: true
+        data_portability: true
+
+  # Vulnerability severity thresholds
+  severity_thresholds:
+    critical:
+      action: "block_deployment"
+      max_allowed: 0
+    high:
+      action: "require_approval"
+      max_allowed: 3
+    medium:
+      action: "warn"
+      max_allowed: 10
+    low:
+      action: "log_only"
+      max_allowed: 50
+
+  # Reporting configuration
+  reporting:
+    enabled: true
+    formats:
+      - "json"
+      - "html"
+      - "pdf"
+    recipients:
+      - "security-team@lawfirmpro.com"
+      - "compliance-officer@lawfirmpro.com"
+    retention_days: 365
+
+  # Integration with CI/CD
+  cicd_integration:
+    enabled: true
+    pre_commit_hooks:
+      - "eslint"
+      - "npm-audit"
+    pre_deployment_checks:
+      - "vulnerability_scanning"
+      - "dependency_scanning"
+    post_deployment_checks:
+      - "container_scanning"
+      - "infrastructure_scanning"
+
+  # Alerting configuration
+  alerting:
+    enabled: true
+    channels:
+      - type: "email"
+        recipients: ["security-team@lawfirmpro.com"]
+        severity_levels: ["critical", "high"]
+      - type: "slack"
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        severity_levels: ["critical", "high", "medium"]
+      - type: "pagerduty"
+        service_key: "${PAGERDUTY_SERVICE_KEY}"
+        severity_levels: ["critical"]
+    
+    escalation_policy:
+      critical:
+        - immediate: "security-team"
+        - after_15min: "security-lead"
+        - after_30min: "cto"
+      high:
+        - immediate: "security-team"
+        - after_1hour: "security-lead"
+      medium:
+        - immediate: "security-team"
+        - after_4hours: "security-lead"
+
+  # Remediation workflows
+  remediation:
+    auto_remediation:
+      enabled: true
+      rules:
+        - vulnerability_type: "dependency_vulnerability"
+          severity: "low"
+          action: "update_dependency"
+        - vulnerability_type: "configuration_issue"
+          severity: "medium"
+          action: "apply_configuration_fix"
+    
+    manual_review:
+      required_for:
+        - "critical"
+        - "high"
+      reviewers:
+        - "security-team"
+        - "development-lead"
+
+  # Performance optimization
+  performance:
+    parallel_scans: true
+    max_concurrent_scans: 5
+    scan_timeout: 3600
+    result_cache_ttl: 86400  # 24 hours
+
+  # Logging and monitoring
+  logging:
+    enabled: true
+    level: "INFO"
+    destination: "security/logs/security-scanner.log"
+    rotation:
+      enabled: true
+      max_size: "100MB"
+      max_files: 10
+    metrics:
+      enabled: true
+      export_to: "prometheus"

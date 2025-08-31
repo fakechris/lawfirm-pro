@@ -1,0 +1,153 @@
+# Alert Configuration for Law Firm Pro
+# This file defines alert rules and notification channels
+
+# Email notification channels
+email_channels:
+  - name: "critical-alerts"
+    email: "critical-alerts@lawfirmpro.com"
+    severity: ["critical"]
+    enabled: true
+    
+  - name: "warning-alerts"
+    email: "warnings@lawfirmpro.com"
+    severity: ["warning"]
+    enabled: true
+    
+  - name: "database-team"
+    email: "database-team@lawfirmpro.com"
+    services: ["database"]
+    enabled: true
+    
+  - name: "integration-team"
+    email: "integration-team@lawfirmpro.com"
+    services: ["integrations"]
+    enabled: true
+
+# Slack notification channels
+slack_channels:
+  - name: "critical-alerts"
+    webhook_url: "${SLACK_CRITICAL_WEBHOOK}"
+    channel: "#critical-alerts"
+    severity: ["critical"]
+    enabled: true
+    
+  - name: "warning-alerts"
+    webhook_url: "${SLACK_WARNING_WEBHOOK}"
+    channel: "#warnings"
+    severity: ["warning"]
+    enabled: true
+    
+  - name: "monitoring"
+    webhook_url: "${SLACK_MONITORING_WEBHOOK}"
+    channel: "#monitoring"
+    severity: ["critical", "warning"]
+    enabled: true
+
+# PagerDuty notification channels
+pagerduty_channels:
+  - name: "critical-pagerduty"
+    service_key: "${PAGERDUTY_SERVICE_KEY}"
+    severity: ["critical"]
+    enabled: true
+
+# Alert rules
+alert_rules:
+  - name: "HighErrorRate"
+    condition: "rate(integration_error_count[5m]) > 10"
+    duration: "5m"
+    severity: "critical"
+    service: "lawfirmpro"
+    notification_channels: ["critical-alerts", "critical-pagerduty"]
+    
+  - name: "SlowResponseTime"
+    condition: "histogram_quantile(0.95, rate(integration_response_time_bucket[5m])) > 5000"
+    duration: "5m"
+    severity: "warning"
+    service: "lawfirmpro"
+    notification_channels: ["warning-alerts", "monitoring"]
+    
+  - name: "HighMemoryUsage"
+    condition: "process_resident_memory_bytes / 1024 / 1024 > 1024"
+    duration: "5m"
+    severity: "warning"
+    service: "lawfirmpro"
+    notification_channels: ["warning-alerts"]
+    
+  - name: "HighCpuUsage"
+    condition: "rate(process_cpu_seconds_total[5m]) * 100 > 80"
+    duration: "5m"
+    severity: "warning"
+    service: "lawfirmpro"
+    notification_channels: ["warning-alerts"]
+    
+  - name: "DatabaseConnectionHigh"
+    condition: "pg_stat_database_numbackends > 80"
+    duration: "5m"
+    severity: "critical"
+    service: "database"
+    notification_channels: ["critical-alerts", "database-team", "critical-pagerduty"]
+    
+  - name: "DatabaseSlowQueries"
+    condition: "rate(pg_stat_database_calls_total[5m]) > 100"
+    duration: "5m"
+    severity: "warning"
+    service: "database"
+    notification_channels: ["database-team"]
+    
+  - name: "HighDiskUsage"
+    condition: "(1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85"
+    duration: "5m"
+    severity: "warning"
+    service: "infrastructure"
+    notification_channels: ["warning-alerts"]
+    
+  - name: "NodeHighMemoryUsage"
+    condition: "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90"
+    duration: "5m"
+    severity: "critical"
+    service: "infrastructure"
+    notification_channels: ["critical-alerts", "critical-pagerduty"]
+    
+  - name: "IntegrationServiceDown"
+    condition: "up{job=\"integration-services\"} == 0"
+    duration: "1m"
+    severity: "critical"
+    service: "integrations"
+    notification_channels: ["critical-alerts", "integration-team", "critical-pagerduty"]
+    
+  - name: "IntegrationFailureRate"
+    condition: "rate(integration_error_count[5m]) / rate(integration_requests_total[5m]) > 0.1"
+    duration: "5m"
+    severity: "warning"
+    service: "integrations"
+    notification_channels: ["warning-alerts", "integration-team"]
+
+# Alert suppression rules
+suppression_rules:
+  - name: "maintenance-window"
+    condition: "alert_labels{maintenance=\"true\"}"
+    duration: "1h"
+    
+  - name: "testing-environment"
+    condition: "alert_labels{environment=\"testing\"}"
+    duration: "1h"
+
+# Alert escalation policy
+escalation_policy:
+  - level: 1
+    delay: "5m"
+    channels: ["email"]
+    
+  - level: 2
+    delay: "15m"
+    channels: ["slack"]
+    
+  - level: 3
+    delay: "30m"
+    channels: ["pagerduty"]
+
+# Alert cooldown periods
+cooldown_periods:
+  critical: "10m"
+  warning: "30m"
+  info: "1h"

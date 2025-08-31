@@ -1,0 +1,1 @@
+{"version":3,"file":"PopularArticles.d.ts","sourceRoot":"","sources":["../../../../src/components/knowledge-base/dashboard/PopularArticles.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAC1B,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,+BAA+B,CAAC;AAE1E,UAAU,oBAAoB;IAC5B,QAAQ,EAAE,oBAAoB,EAAE,CAAC;CAClC;AAED,eAAO,MAAM,eAAe,EAAE,KAAK,CAAC,EAAE,CAAC,oBAAoB,CA6F1D,CAAC"}

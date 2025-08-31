@@ -1,0 +1,299 @@
+# Semgrep Security Rules for Law Firm Pro
+# Custom security rules tailored for legal document management
+
+rules:
+  - id: sql-injection-document-search
+    mode: taint
+    pattern-sources:
+      - patterns:
+          pattern: req.query.$QUERY
+          pattern: req.body.$QUERY
+          pattern: req.params.$QUERY
+    pattern-sinks:
+      - patterns:
+          pattern: prisma.$TABLE.findMany(...)
+          pattern: prisma.$TABLE.findFirst(...)
+          pattern: prisma.$TABLE.findUnique(...)
+          pattern: db.query($QUERY, ...)
+    message: "Potential SQL injection in document search functionality"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A1: Injection"
+      cwe: "CWE-89"
+
+  - id: xss-document-description
+    mode: taint
+    pattern-sources:
+      - patterns:
+          pattern: document.description
+          pattern: document.extractedText
+          pattern: comment.content
+    pattern-sinks:
+      - patterns:
+          pattern: res.send(...)
+          pattern: res.json(...)
+          pattern: innerHTML = $SINK
+          pattern: document.write($SINK)
+    message: "Potential XSS vulnerability in document content rendering"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A3: Cross-Site Scripting (XSS)"
+      cwe: "CWE-79"
+
+  - id: insecure-file-upload
+    patterns:
+      - pattern: |
+          $UPLOAD = req.file
+          ...
+          $FS.writeFile($UPLOAD.path, $UPLOAD.buffer)
+      - pattern-not: |
+          $UPLOAD = req.file
+          ...
+          if ($UPLOAD.mimetype in $ALLOWED_TYPES) {
+            $FS.writeFile($UPLOAD.path, $UPLOAD.buffer)
+          }
+    message: "Insecure file upload without proper validation"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A5: Broken Access Control"
+      cwe: "CWE-434"
+
+  - id: hardcoded-credentials
+    patterns:
+      - pattern: |
+          const $PASSWORD = "..."
+      - pattern: |
+          const $API_KEY = "..."
+      - pattern: |
+          const $SECRET = "..."
+      - pattern-not: |
+          const $PASSWORD = process.env.$ENV_VAR
+    message: "Hardcoded credentials detected"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A2: Broken Authentication"
+      cwe: "CWE-798"
+
+  - id: weak-crypto
+    patterns:
+      - pattern: crypto.createHash('md5')
+      - pattern: crypto.createHash('sha1')
+      - pattern: crypto.createCipher('des-...')
+      - pattern: crypto.createCipher('rc4-...')
+    message: "Weak cryptographic algorithm detected"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A3: Sensitive Data Exposure"
+      cwe: "CWE-327"
+
+  - id: path-traversal
+    patterns:
+      - pattern: fs.readFile('../' + $USER_INPUT)
+      - pattern: fs.readFileSync('../' + $USER_INPUT)
+      - pattern: path.join('../', $USER_INPUT)
+    message: "Potential path traversal vulnerability"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A5: Broken Access Control"
+      cwe: "CWE-22"
+
+  - id: insecure-random
+    patterns:
+      - pattern: Math.random()
+      - pattern-not: |
+          // For non-cryptographic purposes
+          Math.random()
+    message: "Insecure random number generation for security purposes"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A2: Broken Authentication"
+      cwe: "CWE-338"
+
+  - id: missing-rate-limit
+    patterns:
+      - pattern: |
+          app.post('/auth/login', ...)
+      - pattern-not: |
+          const rateLimit = require('express-rate-limit')
+          ...
+          app.post('/auth/login', rateLimit(...), ...)
+    message: "Missing rate limiting on authentication endpoint"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A6: Security Misconfiguration"
+      cwe: "CWE-307"
+
+  - id: insecure-session
+    patterns:
+      - pattern: |
+          app.use(session({
+            secret: '...',
+            cookie: { secure: false }
+          }))
+    message: "Insecure session configuration - cookies not set to secure"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A2: Broken Authentication"
+      cwe: "CWE-614"
+
+  - id: improper-error-handling
+    patterns:
+      - pattern: |
+          app.use((err, req, res, next) => {
+            res.status(500).send(err.stack)
+          })
+    message: "Improper error handling - exposing stack traces"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A6: Security Misconfiguration"
+      cwe: "CWE-209"
+
+  - id: cors-misconfiguration
+    patterns:
+      - pattern: |
+          app.use(cors({
+            origin: '*'
+          }))
+    message: "CORS misconfigured - allowing all origins"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A5: Broken Access Control"
+      cwe: "CWE-942"
+
+  - id: missing-input-validation
+    patterns:
+      - pattern: |
+          router.post('/documents', (req, res) => {
+            const { title, content } = req.body
+            // Direct use without validation
+          })
+    message: "Missing input validation"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A1: Injection"
+      cwe: "CWE-20"
+
+  - id: sensitive-data-logging
+    patterns:
+      - pattern: |
+          console.log(req.body.password)
+          console.log(req.body.token)
+          console.log(req.body.apiKey)
+    message: "Sensitive data being logged"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A3: Sensitive Data Exposure"
+      cwe: "CWE-532"
+
+  - id: broken-access-control-document
+    patterns:
+      - pattern: |
+          router.get('/documents/:id', (req, res) => {
+            const documentId = req.params.id
+            // No authorization check
+          })
+    message: "Missing authorization check for document access"
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      category: security
+      owasp: "A5: Broken Access Control"
+      cwe: "CWE-285"
+
+  - id: insecure-direct-object-reference
+    patterns:
+      - pattern: |
+          router.get('/documents/:id', (req, res) => {
+            const documentId = req.params.id
+            db.query('SELECT * FROM documents WHERE id = ?', [documentId])
+          })
+    message: "Potential insecure direct object reference"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A5: Broken Access Control"
+      cwe: "CWE-639"
+
+  - id: missing-security-headers
+    patterns:
+      - pattern: |
+          app.use(express.json())
+          // No security headers middleware
+    message: "Missing security headers middleware"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A6: Security Misconfiguration"
+      cwe: "CWE-693"
+
+  - id: improper-exception-handling
+    patterns:
+      - pattern: |
+          try {
+            $DANGEROUS_OPERATION
+          } catch (error) {
+            // Silent catch
+          }
+    message: "Improper exception handling - silent catch"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A10: Insufficient Logging & Monitoring"
+      cwe: "CWE-392"
+
+  - id: weak-password-policy
+    patterns:
+      - pattern: |
+          if (password.length < 6) {
+            // Weak password requirement
+          }
+    message: "Weak password policy - minimum length should be at least 8 characters"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A2: Broken Authentication"
+      cwe: "CWE-521"
+
+  - id: missing-https-redirect
+    patterns:
+      - pattern: |
+          app.listen(3000, () => {
+            // No HTTPS redirect
+          })
+    message: "Missing HTTPS redirect - forcing HTTP"
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: security
+      owasp: "A3: Sensitive Data Exposure"
+      cwe: "CWE-311"

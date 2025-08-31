@@ -1,0 +1,47 @@
+import { TaskService } from '../services/tasks/TaskService';
+import { TaskAssignmentService } from '../services/tasks/TaskAssignmentService';
+import { TaskDependencyService } from '../services/tasks/TaskDependencyService';
+import { TaskPriorityService } from '../services/tasks/TaskPriorityService';
+import { Database } from '../utils/database';
+export declare class TaskController {
+    private taskService;
+    private assignmentService;
+    private dependencyService;
+    private priorityService;
+    private db;
+    constructor(taskService: TaskService, assignmentService: TaskAssignmentService, dependencyService: TaskDependencyService, priorityService: TaskPriorityService, db: Database);
+    private createTaskSchema;
+    private updateTaskSchema;
+    private createDependencySchema;
+    private assignmentCriteriaSchema;
+    createTask: any;
+    getTask: any;
+    getTasks: any;
+    updateTask: any;
+    deleteTask: any;
+    getTaskStats: any;
+    getTasksByCase: any;
+    recommendAssignees: any;
+    autoAssignTask: any;
+    getUserWorkload: any;
+    getTeamWorkloads: any;
+    reassignTasks: any;
+    createDependency: any;
+    getTaskDependencies: any;
+    getTaskDependents: any;
+    getDependencyGraph: any;
+    validateDependencies: any;
+    getBlockedTasks: any;
+    canStartTask: any;
+    deleteDependency: any;
+    prioritizeTasks: any;
+    getPriorityBasedTasks: any;
+    getOverdueTasks: any;
+    getUrgentTasks: any;
+    adjustTaskPriority: any;
+    autoPrioritizeCaseTasks: any;
+    calculateTaskPriority: any;
+    bulkAssignTasks: any;
+    bulkCreateDependencies: any;
+}
+//# sourceMappingURL=TaskController.d.ts.map

@@ -1,0 +1,66 @@
+{{ define "slack.default.title" }}{{ .GroupLabels.alertname }}{{ end }}
+
+{{ define "slack.default.text" }}
+{{ range .Alerts }}
+*Alert*: {{ .Annotations.summary }}
+*Description*: {{ .Annotations.description }}
+*Severity*: {{ .Labels.severity }}
+*Service*: {{ .Labels.service }}
+*Starts at*: {{ .StartsAt }}
+{{ end }}
+{{ end }}
+
+{{ define "email.default.subject" }}[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}{{ end }}
+
+{{ define "email.default.html" }}
+<html>
+<body>
+  <h2>{{ .Status | toUpper }}{{ if eq .Status "firing" }}: {{ .Alerts.Firing | len }}{{ end }}</h2>
+  
+  <table>
+    <tr>
+      <th>Alert Name</th>
+      <th>Severity</th>
+      <th>Service</th>
+      <th>Starts At</th>
+    </tr>
+    {{ range .Alerts }}
+    <tr>
+      <td>{{ .Annotations.summary }}</td>
+      <td>{{ .Labels.severity }}</td>
+      <td>{{ .Labels.service }}</td>
+      <td>{{ .StartsAt }}</td>
+    </tr>
+    {{ end }}
+  </table>
+  
+  {{ if gt (len .Alerts.Resolved) 0 }}
+  <h3>Resolved Alerts</h3>
+  <table>
+    <tr>
+      <th>Alert Name</th>
+      <th>Severity</th>
+      <th>Service</th>
+      <th>Resolved At</th>
+    </tr>
+    {{ range .Alerts.Resolved }}
+    <tr>
+      <td>{{ .Annotations.summary }}</td>
+      <td>{{ .Labels.severity }}</td>
+      <td>{{ .Labels.service }}</td>
+      <td>{{ .EndsAt }}</td>
+    </tr>
+    {{ end }}
+  </table>
+  {{ end }}
+</body>
+</html>
+{{ end }}
+
+{{ define "pagerduty.default.description" }}
+{{ .GroupLabels.alertname }} for {{ .GroupLabels.service }}
+{{ end }}
+
+{{ define "pagerduty.default.client" }}Law Firm Pro Monitoring{{ end }}
+
+{{ define "pagerduty.default.clientURL" }}http://grafana:3000{{ end }}

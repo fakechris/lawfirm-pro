@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: lawfirmpro-app
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Debug port
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://lawfirm:lawfirm@postgres:5432/lawfirmpro_dev
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - SESSION_SECRET=dev-session-secret-change-in-production
+    volumes:
+      - ..:/app
+      - /app/node_modules
+      - /app/dist
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - lawfirmpro-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: lawfirmpro-postgres
+    environment:
+      - POSTGRES_DB=lawfirmpro_dev
+      - POSTGRES_USER=lawfirm
+      - POSTGRES_PASSWORD=lawfirm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/database:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - lawfirmpro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawfirm -d lawfirmpro_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: lawfirmpro-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lawfirmpro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: lawfirmpro-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - lawfirmpro-network
+    restart: unless-stopped
+
+  # Optional: For testing with production-like environment
+  app-prod-like:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lawfirmpro-app-prod-like
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://lawfirm:lawfirm@postgres:5432/lawfirmpro_test
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=test-jwt-secret
+      - SESSION_SECRET=test-session-secret
+    volumes:
+      - ../uploads:/app/uploads
+      - ../logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - lawfirmpro-network
+    profiles:
+      - test
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  lawfirmpro-network:
+    driver: bridge

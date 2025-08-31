@@ -1,0 +1,1 @@
+{"version":3,"file":"RecentArticles.d.ts","sourceRoot":"","sources":["../../../../src/components/knowledge-base/dashboard/RecentArticles.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAG1B,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,+BAA+B,CAAC;AAE1E,UAAU,mBAAmB;IAC3B,QAAQ,EAAE,oBAAoB,EAAE,CAAC;CAClC;AAED,eAAO,MAAM,cAAc,EAAE,KAAK,CAAC,EAAE,CAAC,mBAAmB,CAuHxD,CAAC"}

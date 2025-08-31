@@ -1,0 +1,43 @@
+# Development Dockerfile
+FROM node:18-alpine AS development
+
+# Install development dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    pkgconfig \
+    vips-dev \
+    vips-tools \
+    fftw-dev \
+    git \
+    bash
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install all dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Create directories for uploads and logs
+RUN mkdir -p /app/uploads /app/logs /app/temp
+
+# Expose port
+EXPOSE 3000
+
+# Environment variables
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Start the application in development mode
+CMD ["npm", "run", "dev"]

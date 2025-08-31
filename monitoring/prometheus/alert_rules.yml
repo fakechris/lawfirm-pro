@@ -1,0 +1,118 @@
+groups:
+  - name: application-alerts
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(integration_error_count[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+          service: lawfirmpro
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second over the last 5 minutes"
+
+      # Slow response time
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.95, rate(integration_response_time_bucket[5m])) > 5000
+        for: 5m
+        labels:
+          severity: warning
+          service: lawfirmpro
+        annotations:
+          summary: "Slow response time detected"
+          description: "95th percentile response time is {{ $value }}ms over the last 5 minutes"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 1024
+        for: 5m
+        labels:
+          severity: warning
+          service: lawfirmpro
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}MB"
+
+      # High CPU usage
+      - alert: HighCpuUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: lawfirmpro
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% over the last 5 minutes"
+
+  - name: database-alerts
+    rules:
+      # Database connection issues
+      - alert: DatabaseConnectionHigh
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "High database connections"
+          description: "Database has {{ $value }} active connections"
+
+      # Database slow queries
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_database_calls_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database slow queries detected"
+          description: "Database slow query rate is {{ $value }} per second"
+
+  - name: infrastructure-alerts
+    rules:
+      # High disk usage
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High disk usage detected"
+          description: "Disk usage is {{ $value }}% on {{ $labels.device }}"
+
+      # High memory usage on node
+      - alert: NodeHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "High memory usage on node"
+          description: "Node memory usage is {{ $value }}%"
+
+  - name: business-alerts
+    rules:
+      # Integration service down
+      - alert: IntegrationServiceDown
+        expr: up{job="integration-services"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: integrations
+        annotations:
+          summary: "Integration service is down"
+          description: "Integration service {{ $labels.instance }} is not responding"
+
+      # Failed integration requests
+      - alert: IntegrationFailureRate
+        expr: rate(integration_failed_requests_total[5m]) / rate(integration_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: integrations
+        annotations:
+          summary: "High integration failure rate"
+          description: "Integration failure rate is {{ $value | humanizePercentage }}"

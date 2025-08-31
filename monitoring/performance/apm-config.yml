@@ -1,0 +1,213 @@
+# Application Performance Monitoring Configuration
+# This file defines APM settings and performance metrics collection
+
+# Performance thresholds
+performance_thresholds:
+  response_time:
+    p50: 100ms
+    p95: 500ms
+    p99: 1000ms
+    critical: 2000ms
+  
+  error_rate:
+    warning: 1%
+    critical: 5%
+  
+  throughput:
+    minimum: 10 req/sec
+    expected: 100 req/sec
+  
+  memory_usage:
+    warning: 512MB
+    critical: 1024MB
+  
+  cpu_usage:
+    warning: 70%
+    critical: 90%
+  
+  gc_pause:
+    warning: 100ms
+    critical: 500ms
+
+# Custom metrics to collect
+custom_metrics:
+  - name: integration_request_duration
+    type: histogram
+    description: "Duration of integration requests"
+    buckets: [10, 50, 100, 250, 500, 1000, 2000, 5000]
+    labels: [service, operation, status]
+  
+  - name: integration_requests_total
+    type: counter
+    description: "Total number of integration requests"
+    labels: [service, operation, status]
+  
+  - name: integration_errors_total
+    type: counter
+    description: "Total number of integration errors"
+    labels: [service, operation, error_type]
+  
+  - name: database_query_duration
+    type: histogram
+    description: "Duration of database queries"
+    buckets: [1, 5, 10, 25, 50, 100, 250, 500]
+    labels: [operation, table]
+  
+  - name: cache_hit_ratio
+    type: gauge
+    description: "Cache hit ratio"
+    labels: [cache_type]
+  
+  - name: active_users
+    type: gauge
+    description: "Number of active users"
+    labels: [role, department]
+
+# Performance profiling settings
+profiling:
+  enabled: true
+  cpu_profiling:
+    enabled: true
+    duration: 30s
+    interval: 5m
+  
+  memory_profiling:
+    enabled: true
+    duration: 30s
+    interval: 10m
+  
+  heap_profiling:
+    enabled: true
+    duration: 30s
+    interval: 15m
+
+# Distributed tracing
+tracing:
+  enabled: true
+  sample_rate: 0.1
+  service_name: "lawfirmpro"
+  exporter: "jaeger"
+  jaeger:
+    endpoint: "http://jaeger:14268/api/traces"
+  
+  custom_spans:
+    - name: "integration_request"
+      operations: ["pacer_filing", "stripe_payment", "paypal_payment"]
+    - name: "database_operation"
+      operations: ["case_query", "document_save", "user_update"]
+    - name: "cache_operation"
+      operations: ["cache_get", "cache_set", "cache_delete"]
+
+# Real User Monitoring (RUM)
+rum:
+  enabled: true
+  sample_rate: 0.05
+  metrics:
+    - page_load_time
+    - first_contentful_paint
+    - largest_contentful_paint
+    - cumulative_layout_shift
+    - first_input_delay
+  
+  custom_events:
+    - name: "user_action"
+      properties: [action_type, target_element, timestamp]
+    - name: "form_submission"
+      properties: [form_name, submission_time, success]
+
+# Synthetic monitoring
+synthetic:
+  enabled: true
+  checks:
+    - name: "health_check"
+      url: "http://app:3000/health"
+      interval: 30s
+      timeout: 10s
+    
+    - name: "integration_health"
+      url: "http://integrations:3001/health"
+      interval: 30s
+      timeout: 10s
+    
+    - name: "api_availability"
+      url: "http://app:3000/api/cases"
+      interval: 60s
+      timeout: 15s
+      headers:
+        Authorization: "Bearer ${API_TOKEN}"
+
+# Performance alerts
+performance_alerts:
+  - name: "high_response_time"
+    condition: "histogram_quantile(0.95, rate(integration_response_time_bucket[5m])) > 1000"
+    severity: "warning"
+    duration: "5m"
+    
+  - name: "critical_response_time"
+    condition: "histogram_quantile(0.95, rate(integration_response_time_bucket[5m])) > 2000"
+    severity: "critical"
+    duration: "2m"
+    
+  - name: "high_error_rate"
+    condition: "rate(integration_error_count[5m]) / rate(integration_requests_total[5m]) > 0.05"
+    severity: "critical"
+    duration: "5m"
+    
+  - name: "high_memory_usage"
+    condition: "process_resident_memory_bytes / 1024 / 1024 > 1024"
+    severity: "critical"
+    duration: "5m"
+    
+  - name: "high_cpu_usage"
+    condition: "rate(process_cpu_seconds_total[5m]) * 100 > 90"
+    severity: "critical"
+    duration: "5m"
+    
+  - name: "low_throughput"
+    condition: "rate(integration_requests_total[5m]) < 10"
+    severity: "warning"
+    duration: "10m"
+
+# Performance reporting
+reporting:
+  enabled: true
+  daily_report:
+    enabled: true
+    time: "09:00"
+    format: "html"
+    recipients: ["performance-team@lawfirmpro.com"]
+  
+  weekly_report:
+    enabled: true
+    day: "monday"
+    time: "09:00"
+    format: "pdf"
+    recipients: ["management@lawfirmpro.com"]
+  
+  metrics:
+    - avg_response_time
+    - p95_response_time
+    - error_rate
+    - throughput
+    - availability
+    - user_satisfaction
+
+# Performance optimization suggestions
+optimization:
+  enabled: true
+  checks:
+    - name: "slow_queries"
+      threshold: 1000ms
+      action: "suggest_indexing"
+    
+    - name: "memory_leaks"
+      threshold: "持续增长"
+      action: "suggest_memory_profile"
+    
+    - name: "cache_misses"
+      threshold: 0.8
+      action: "suggest_cache_tuning"
+    
+    - name: "connection_pool_exhaustion"
+      threshold: 0.9
+      action: "suggest_pool_increase"
