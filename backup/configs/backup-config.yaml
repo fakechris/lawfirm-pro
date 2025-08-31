@@ -1,0 +1,402 @@
+# Backup Configuration for Law Firm Pro
+# Comprehensive backup strategy with disaster recovery
+
+backup_configuration:
+  version: "1.0"
+  environment: "${ENVIRONMENT}"
+  
+  # Backup retention policies
+  retention:
+    daily:
+      enabled: true
+      keep_days: 30
+      cleanup_time: "03:00"
+    
+    weekly:
+      enabled: true
+      keep_weeks: 12
+      cleanup_day: "sunday"
+      cleanup_time: "04:00"
+    
+    monthly:
+      enabled: true
+      keep_months: 24
+      cleanup_day: 1
+      cleanup_time: "05:00"
+    
+    yearly:
+      enabled: true
+      keep_years: 7
+      cleanup_month: 1
+      cleanup_day: 1
+      cleanup_time: "06:00"
+
+  # Backup schedule
+  schedule:
+    automated_backups:
+      - name: "database_backup"
+        schedule: "0 2 * * *"  # Daily at 2 AM
+        enabled: true
+        priority: "high"
+        
+      - name: "documents_backup"
+        schedule: "0 3 * * *"  # Daily at 3 AM
+        enabled: true
+        priority: "high"
+        
+      - name: "application_backup"
+        schedule: "0 4 * * 0"  # Weekly on Sunday at 4 AM
+        enabled: true
+        priority: "medium"
+        
+      - name: "configuration_backup"
+        schedule: "0 5 1 * *"  # Monthly on 1st at 5 AM
+        enabled: true
+        priority: "medium"
+        
+      - name: "compliance_backup"
+        schedule: "0 6 1 1 *"  # Yearly on January 1st at 6 AM
+        enabled: true
+        priority: "low"
+
+  # Backup types
+  backup_types:
+    database:
+      enabled: true
+      engines:
+        - name: "postgresql"
+          host: "${DB_HOST}"
+          port: "${DB_PORT}"
+          database: "${DB_NAME}"
+          username: "${DB_USER}"
+          password: "${DB_PASSWORD}"
+          ssl_mode: "require"
+          backup_method: "pg_dump"
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - name: "redis"
+          host: "${REDIS_HOST}"
+          port: "${REDIS_PORT}"
+          password: "${REDIS_PASSWORD}"
+          backup_method: "rdb"
+          compression: true
+          encryption: true
+    
+    documents:
+      enabled: true
+      directories:
+        - path: "${DOCUMENTS_PATH}"
+          type: "original_documents"
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - path: "${DOCUMENTS_VERSIONS_PATH}"
+          type: "document_versions"
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - path: "${TEMPLATES_PATH}"
+          type: "templates"
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - path: "${EVIDENCE_PATH}"
+          type: "evidence"
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - path: "${THUMBNAILS_PATH}"
+          type: "thumbnails"
+          compression: true
+          encryption: false
+          checksum: true
+    
+    application:
+      enabled: true
+      components:
+        - name: "source_code"
+          path: "${APP_PATH}"
+          exclude_patterns:
+            - "node_modules"
+            - "dist"
+            - "logs"
+            - ".git"
+            - "*.log"
+            - "*.tmp"
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - name: "dependencies"
+          backup_method: "package_json"
+          compression: true
+          encryption: true
+          
+        - name: "environment_variables"
+          backup_method: "env_files"
+          exclude_sensitive: true
+          encryption: true
+    
+    configuration:
+      enabled: true
+      components:
+        - name: "kubernetes_manifests"
+          backup_method: "kubectl_export"
+          namespace: "${K8S_NAMESPACE}"
+          compression: true
+          encryption: true
+          
+        - name: "terraform_state"
+          backup_method: "terraform_state_pull"
+          compression: true
+          encryption: true
+          
+        - name: "monitoring_config"
+          backup_method: "file_copy"
+          path: "${MONITORING_CONFIG_PATH}"
+          compression: true
+          encryption: true
+    
+    compliance:
+      enabled: true
+      components:
+        - name: "audit_logs"
+          retention_days: 3650  # 10 years for legal compliance
+          compression: true
+          encryption: true
+          checksum: true
+          
+        - name: "access_logs"
+          retention_days: 1825  # 5 years
+          compression: true
+          encryption: true
+          
+        - name: "compliance_reports"
+          retention_days: 3650  # 10 years
+          compression: true
+          encryption: true
+          checksum: true
+
+  # Storage destinations
+  storage:
+    primary:
+      type: "s3"
+      config:
+        bucket: "${BACKUP_S3_BUCKET}"
+        region: "${AWS_REGION}"
+        access_key_id: "${AWS_ACCESS_KEY_ID}"
+        secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+        endpoint_url: "${S3_ENDPOINT_URL}"
+        storage_class: "STANDARD_IA"
+        versioning: true
+        encryption:
+          enabled: true
+          algorithm: "AES256"
+          sse_algorithm: "aws:kms"
+          kms_key_id: "${KMS_KEY_ID}"
+        
+    secondary:
+      type: "local"
+      config:
+        path: "${LOCAL_BACKUP_PATH}"
+        disk_usage_threshold: 80  # Alert when disk usage exceeds 80%
+        cleanup_old_backups: true
+        
+    tertiary:
+      type: "azure"
+      config:
+        account_name: "${AZURE_ACCOUNT_NAME}"
+        account_key: "${AZURE_ACCOUNT_KEY}"
+        container: "${AZURE_CONTAINER}"
+        encryption: true
+
+  # Encryption configuration
+  encryption:
+    enabled: true
+    algorithm: "AES-256-GCM"
+    key_management:
+      type: "aws_kms"
+      key_id: "${KMS_KEY_ID}"
+      rotation_enabled: true
+      rotation_days: 90
+    
+    data_encryption:
+      at_rest: true
+      in_transit: true
+      backup_metadata: true
+    
+    key_storage:
+      type: "aws_secrets_manager"
+      secret_name: "${BACKUP_ENCRYPTION_KEYS_SECRET}"
+
+  # Compression configuration
+  compression:
+    enabled: true
+    algorithm: "gzip"
+    level: 6  # Balance between speed and compression ratio
+    parallel_compression: true
+    max_threads: 4
+
+  # Checksum verification
+  checksum:
+    enabled: true
+    algorithm: "sha256"
+    verify_after_backup: true
+    verify_before_restore: true
+    store_checksums: true
+
+  # Backup validation
+  validation:
+    enabled: true
+    post_backup_validation:
+      - check: "file_exists"
+      - check: "file_size"
+      - check: "checksum"
+      - check: "decryption_test"
+      - check: "decompression_test"
+    
+    test_restores:
+      enabled: true
+      schedule: "0 7 * * 0"  # Weekly on Sunday at 7 AM
+      sample_size: 5  # Test restore 5 random files
+      cleanup_after_test: true
+
+  # Monitoring and alerting
+  monitoring:
+    enabled: true
+    metrics:
+      - "backup_duration"
+      - "backup_size"
+      - "backup_success_rate"
+      - "storage_usage"
+      - "encryption_performance"
+    
+    alerting:
+      channels:
+        - type: "email"
+          recipients: ["backup-team@lawfirmpro.com"]
+          severity_levels: ["critical", "high"]
+          
+        - type: "slack"
+          webhook_url: "${SLACK_WEBHOOK_URL}"
+          severity_levels: ["critical", "high", "medium"]
+          
+        - type: "pagerduty"
+          service_key: "${PAGERDUTY_SERVICE_KEY}"
+          severity_levels: ["critical"]
+      
+      conditions:
+        - condition: "backup_failure"
+          severity: "critical"
+          cooldown_minutes: 30
+          
+        - condition: "backup_timeout"
+          severity: "high"
+          cooldown_minutes: 60
+          
+        - condition: "storage_full"
+          severity: "critical"
+          cooldown_minutes: 15
+          
+        - condition: "encryption_failure"
+          severity: "high"
+          cooldown_minutes: 30
+          
+        - condition: "validation_failure"
+          severity: "high"
+          cooldown_minutes: 60
+
+  # Disaster recovery
+  disaster_recovery:
+    enabled: true
+    rpo: "1_hour"  # Recovery Point Objective
+    rto: "4_hours"  # Recovery Time Objective
+    
+    recovery_procedures:
+      - name: "database_recovery"
+        priority: "critical"
+        max_recovery_time: "2_hours"
+        
+      - name: "document_recovery"
+        priority: "high"
+        max_recovery_time: "4_hours"
+        
+      - name: "application_recovery"
+        priority: "medium"
+        max_recovery_time: "8_hours"
+        
+      - name: "configuration_recovery"
+        priority: "medium"
+        max_recovery_time: "6_hours"
+    
+    failover:
+      enabled: true
+      auto_failover: false  # Manual approval required
+      dr_site: "${DR_SITE_URL}"
+      testing:
+        enabled: true
+        schedule: "0 8 * * 6"  # Weekly on Saturday at 8 AM
+        duration_hours: 2
+
+  # Performance optimization
+  performance:
+    parallel_backups: true
+    max_concurrent_backups: 3
+    backup_timeout: 3600  # 1 hour
+    chunk_size: "64MB"
+    bandwidth_throttling:
+      enabled: true
+      max_bandwidth: "100Mbps"
+      time_window: "22:00-06:00"  # Off-peak hours
+
+  # Logging
+  logging:
+    enabled: true
+    level: "INFO"
+    format: "json"
+    destinations:
+      - type: "file"
+        path: "${BACKUP_LOG_PATH}/backup.log"
+        rotation:
+          enabled: true
+          max_size: "100MB"
+          max_files: 10
+          
+      - type: "cloudwatch"
+        log_group: "${CLOUDWATCH_LOG_GROUP}"
+        log_stream: "backup-logs"
+        
+      - type: "elasticsearch"
+        url: "${ELASTICSEARCH_URL}"
+        index: "backup-logs"
+
+  # Compliance and legal requirements
+  compliance:
+    chinese_legal_requirements:
+      enabled: true
+      data_localization:
+        primary_region: "china"
+        secondary_region: "china"
+      data_retention:
+        minimum_years: 7
+        auto_deletion: true
+      audit_trail:
+        enabled: true
+        immutable: true
+      breach_notification:
+        enabled: true
+        notification_window_hours: 72
+    
+    documentation:
+      backup_procedure_document: "${DOCS_PATH}/backup-procedures.md"
+      disaster_recovery_plan: "${DOCS_PATH}/disaster-recovery-plan.md"
+      contact_information:
+        backup_admin: "backup-admin@lawfirmpro.com"
+        security_team: "security-team@lawfirmpro.com"
+        compliance_officer: "compliance@lawfirmpro.com"

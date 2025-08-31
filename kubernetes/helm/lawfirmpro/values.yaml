@@ -1,0 +1,167 @@
+replicaCount: 3
+
+image:
+  repository: lawfirmpro/app
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+  hosts:
+    - host: lawfirmpro.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - lawfirmpro.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  NODE_ENV: production
+  PORT: 3000
+  LOG_LEVEL: info
+
+database:
+  host: ""
+  port: 5432
+  name: lawfirmpro
+  username: lawfirm
+  password: ""
+  ssl: true
+
+redis:
+  host: ""
+  port: 6379
+  password: ""
+  db: 0
+
+secrets:
+  jwtSecret: ""
+  sessionSecret: ""
+  databasePassword: ""
+  redisPassword: ""
+
+configMaps:
+  appConfig: |
+    {
+      "appName": "Law Firm Pro",
+      "version": "1.0.0",
+      "environment": "production",
+      "debug": false,
+      "cors": {
+        "origin": ["https://lawfirmpro.com"],
+        "credentials": true
+      },
+      "uploads": {
+        "maxSize": "10MB",
+        "allowedTypes": ["pdf", "doc", "docx", "txt", "jpg", "png"]
+      },
+      "security": {
+        "rateLimiting": {
+          "windowMs": 900000,
+          "max": 100
+        },
+        "cors": {
+          "origin": ["https://lawfirmpro.com"],
+          "credentials": true
+        }
+      }
+    }
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: ""
+    database: lawfirmpro
+    username: lawfirm
+    password: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: "gp3"
+
+redis:
+  enabled: false
+  auth:
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "gp3"
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "gp3"
+
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
+logging:
+  enabled: true
+  level: info
+  format: json
+  destination: cloudwatch
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  retention: 7

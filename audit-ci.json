@@ -1,0 +1,23 @@
+{
+  "low": true,
+  "moderate": true,
+  "high": true,
+  "critical": true,
+  "report-type": "important",
+  "skip-dev": true,
+  "skip-unused": true,
+  "advisories": {
+    "allowlist": [],
+    "blocklist": [],
+    "severity": "moderate"
+  },
+  "output-format": "text",
+  "output-file": "audit-report.txt",
+  "directories": [
+    "."
+  ],
+  "package-manager": "npm",
+  "package-lock-only": false,
+  "registry": "https://registry.npmjs.org",
+  "timeout": 300000
+}

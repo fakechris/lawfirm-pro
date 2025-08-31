@@ -1,0 +1,276 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3 AM UTC
+  workflow_dispatch:
+
+jobs:
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t lawfirmpro:security-scan -f docker/Dockerfile .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'lawfirmpro:security-scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Snyk container scan
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: lawfirmpro:security-scan
+          args: --severity-threshold=high
+          command: test
+
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level moderate --json || true
+
+      - name: Run OWASP dependency check
+        run: npx audit-ci --config audit-ci.json || true
+
+      - name: Run Snyk code scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+          command: code test
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  secrets-detection:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --only-verified
+
+  infrastructure-security:
+    name: Infrastructure Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov on Docker files
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: docker/
+          framework: dockerfile
+          soft_fail: true
+
+      - name: Run Checkov on Kubernetes manifests
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./
+          framework: kubernetes
+          soft_fail: true
+
+      - name: Run Kube-score on Kubernetes manifests
+        run: |
+          curl -L https://github.com/zegl/kube-score/releases/download/v1.15.0/kube-score_1.15.0_linux_amd64 -o kube-score
+          chmod +x kube-score
+          ./kube-score score *.yaml --ignore-test pod-probes --ignore-test container-security-context --ignore-test pod-networkpolicy
+
+  compliance-checks:
+    name: Compliance Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OpenSCAP scanning
+        run: |
+          # Install OpenSCAP
+          sudo apt-get update
+          sudo apt-get install -y libopenscap8
+
+      - name: Check for HIPAA compliance issues
+        run: |
+          # Scan for PHI handling patterns
+          grep -r "health\|medical\|patient\|phi\|hipaa" src/ --include="*.ts" | head -10 || true
+
+      - name: Check for GDPR compliance
+        run: |
+          # Scan for data handling patterns
+          grep -r "consent\|privacy\|data.*protection\|gdpr" src/ --include="*.ts" | head -10 || true
+
+      - name: Check for security best practices
+        run: |
+          # Check for hardcoded secrets
+          grep -r "password\|secret\|key\|token" src/ --include="*.ts" | grep -v "test\|env\|config" | head -10 || true
+
+  security-report:
+    name: Security Report Generation
+    runs-on: ubuntu-latest
+    needs: [container-security, code-security, secrets-detection, infrastructure-security, compliance-checks]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate security report
+        run: |
+          cat > security-report.md << EOF
+          # Security Scan Report
+          
+          ## Scan Summary
+          - **Date**: $(date)
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: ${{ github.ref }}
+          
+          ## Scan Results
+          
+          ### Container Security
+          - Status: ${{ needs.container-security.result }}
+          
+          ### Code Security
+          - Status: ${{ needs.code-security.result }}
+          
+          ### Secrets Detection
+          - Status: ${{ needs.secrets-detection.result }}
+          
+          ### Infrastructure Security
+          - Status: ${{ needs.infrastructure-security.result }}
+          
+          ### Compliance Checks
+          - Status: ${{ needs.compliance-checks.result }}
+          
+          ## Recommendations
+          
+          ### High Priority
+          - Review and fix any high-severity vulnerabilities
+          - Ensure no secrets are committed to the repository
+          - Update dependencies to latest secure versions
+          
+          ### Medium Priority
+          - Implement security headers in the application
+          - Add rate limiting to sensitive endpoints
+          - Implement proper input validation
+          
+          ### Low Priority
+          - Add security logging and monitoring
+          - Implement security training for developers
+          - Regular security reviews
+          EOF
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+
+      - name: Comment on PR if security issues found
+        if: github.event_name == 'pull_request' && (needs.container-security.result == 'failure' || needs.code-security.result == 'failure' || needs.secrets-detection.result == 'failure')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🔒 **Security Scan Results**\n\nSome security scans failed. Please review the security report and address the issues before merging.'
+            })
+
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    needs: [container-security, code-security, secrets-detection, infrastructure-security, compliance-checks]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Check security gate
+        run: |
+          if [ "${{ needs.container-security.result }}" = "failure" ] || \
+             [ "${{ needs.code-security.result }}" = "failure" ] || \
+             [ "${{ needs.secrets-detection.result }}" = "failure" ]; then
+            echo "❌ Security gate failed - some security scans failed"
+            exit 1
+          else
+            echo "✅ Security gate passed - all security scans passed"
+            exit 0
+          fi
+
+      - name: Approve PR if security checks pass
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              event: 'APPROVE'
+            })

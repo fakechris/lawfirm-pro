@@ -1,0 +1,66 @@
+groups:
+  - name: application-recording
+    rules:
+      # Request rate
+      - record: app:request_rate:5m
+        expr: rate(integration_requests_total[5m])
+
+      # Error rate
+      - record: app:error_rate:5m
+        expr: rate(integration_error_count[5m])
+
+      # Response time percentiles
+      - record: app:response_time:p50:5m
+        expr: histogram_quantile(0.50, rate(integration_response_time_bucket[5m]))
+
+      - record: app:response_time:p95:5m
+        expr: histogram_quantile(0.95, rate(integration_response_time_bucket[5m]))
+
+      - record: app:response_time:p99:5m
+        expr: histogram_quantile(0.99, rate(integration_response_time_bucket[5m]))
+
+      # Service-specific metrics
+      - record: app:pacer_requests:5m
+        expr: rate(integration_requests_total{service="pacer"}[5m])
+
+      - record: app:stripe_requests:5m
+        expr: rate(integration_requests_total{service="stripe"}[5m])
+
+      - record: app:paypal_requests:5m
+        expr: rate(integration_requests_total{service="paypal"}[5m])
+
+  - name: system-recording
+    rules:
+      # CPU usage
+      - record: system:cpu_usage:5m
+        expr: rate(process_cpu_seconds_total[5m]) * 100
+
+      # Memory usage
+      - record: system:memory_usage:bytes
+        expr: process_resident_memory_bytes
+
+      # Memory usage in MB
+      - record: system:memory_usage:mb
+        expr: process_resident_memory_bytes / 1024 / 1024
+
+      # Uptime
+      - record: system:uptime:seconds
+        expr: time() - process_start_time_seconds
+
+  - name: business-recording
+    rules:
+      # Integration success rate
+      - record: business:integration_success_rate:5m
+        expr: (rate(integration_requests_total[5m]) - rate(integration_error_count[5m])) / rate(integration_requests_total[5m])
+
+      # Integration failure rate
+      - record: business:integration_failure_rate:5m
+        expr: rate(integration_error_count[5m]) / rate(integration_requests_total[5m])
+
+      # Service availability
+      - record: business:service_availability:5m
+        expr: up{job=~"lawfirmpro-app|integration-services"}
+
+      # Database query rate
+      - record: business:database_query_rate:5m
+        expr: rate(pg_stat_database_calls_total[5m])

@@ -1,0 +1,24 @@
+{"id":"wh_123","level":"info","message":"Webhook received","service":"integration-gateway","timestamp":"2025-08-31T08:00:58.329Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook processed successfully","service":"integration-gateway","success":false,"timestamp":"2025-08-31T08:00:58.331Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook received","service":"integration-gateway","timestamp":"2025-08-31T08:00:58.384Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook processed successfully","service":"integration-gateway","success":false,"timestamp":"2025-08-31T08:00:58.384Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook received","service":"integration-gateway","timestamp":"2025-08-31T08:00:58.404Z","type":"stripe.payment_intent.succeeded"}
+{"error":"Invalid webhook signature","id":"wh_123","level":"error","message":"Webhook processing failed","service":"integration-gateway","timestamp":"2025-08-31T08:00:58.404Z","type":"stripe.payment_intent.succeeded"}
+{"endpoint":"https://example.com/webhook","events":["payment_intent.succeeded"],"level":"info","message":"Registering webhook","service":"stripe","timestamp":"2025-08-31T08:00:58.422Z"}
+{"endpoint":"https://example.com/webhook","level":"info","message":"Webhook registered successfully","service":"stripe","timestamp":"2025-08-31T08:00:58.422Z"}
+{"level":"info","message":"Unregistering webhook","service":"stripe","timestamp":"2025-08-31T08:00:58.440Z","webhookId":"wh_123"}
+{"level":"info","message":"Webhook unregistered successfully","service":"stripe","timestamp":"2025-08-31T08:00:58.441Z","webhookId":"wh_123"}
+{"level":"info","message":"Listing webhooks","service":"stripe","timestamp":"2025-08-31T08:00:58.459Z"}
+{"level":"info","message":"Testing webhook","service":"stripe","timestamp":"2025-08-31T08:00:58.478Z","webhookId":"wh_123"}
+{"id":"wh_123","level":"info","message":"Webhook received","service":"integration-gateway","timestamp":"2025-08-31T10:30:35.304Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook processed successfully","service":"integration-gateway","success":false,"timestamp":"2025-08-31T10:30:35.320Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook received","service":"integration-gateway","timestamp":"2025-08-31T10:30:35.399Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook processed successfully","service":"integration-gateway","success":false,"timestamp":"2025-08-31T10:30:35.400Z","type":"stripe.payment_intent.succeeded"}
+{"id":"wh_123","level":"info","message":"Webhook received","service":"integration-gateway","timestamp":"2025-08-31T10:30:35.420Z","type":"stripe.payment_intent.succeeded"}
+{"error":"Invalid webhook signature","id":"wh_123","level":"error","message":"Webhook processing failed","service":"integration-gateway","timestamp":"2025-08-31T10:30:35.421Z","type":"stripe.payment_intent.succeeded"}
+{"endpoint":"https://example.com/webhook","events":["payment_intent.succeeded"],"level":"info","message":"Registering webhook","service":"stripe","timestamp":"2025-08-31T10:30:35.455Z"}
+{"endpoint":"https://example.com/webhook","level":"info","message":"Webhook registered successfully","service":"stripe","timestamp":"2025-08-31T10:30:35.456Z"}
+{"level":"info","message":"Unregistering webhook","service":"stripe","timestamp":"2025-08-31T10:30:35.481Z","webhookId":"wh_123"}
+{"level":"info","message":"Webhook unregistered successfully","service":"stripe","timestamp":"2025-08-31T10:30:35.481Z","webhookId":"wh_123"}
+{"level":"info","message":"Listing webhooks","service":"stripe","timestamp":"2025-08-31T10:30:35.502Z"}
+{"level":"info","message":"Testing webhook","service":"stripe","timestamp":"2025-08-31T10:30:35.522Z","webhookId":"wh_123"}

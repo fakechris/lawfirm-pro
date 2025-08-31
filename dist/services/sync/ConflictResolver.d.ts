@@ -1,0 +1,41 @@
+import { Conflict, ConflictResolver, ResolutionResult, ResolutionStrategy, DataTarget } from '../../models/integration';
+export declare class ConflictResolverImplementation implements ConflictResolver {
+    private logger;
+    constructor();
+    detectConflicts(sourceData: any[], targetData: any[]): Promise<Conflict[]>;
+    resolveConflict(conflict: Conflict, strategy: ResolutionStrategy): Promise<ResolutionResult>;
+    applyResolution(resolution: ResolutionResult, target: DataTarget): Promise<void>;
+    private createDataMap;
+    private generateRecordKey;
+    private compareRecordsForConflicts;
+    private valuesAreEqual;
+    private createDataMismatchConflict;
+    private createMissingRecordConflict;
+    private determineConflictSeverity;
+    private detectConstraintViolations;
+    private checkUniqueConstraints;
+    private checkForeignKeyConstraints;
+    private checkDataTypeConstraints;
+    private detectDuplicates;
+    private getNewestValue;
+    private getOldestValue;
+    private extractDate;
+    private mergeValues;
+    private applyCustomResolution;
+    private resolveDataMismatch;
+    private resolveMissingRecord;
+    private resolveDuplicateRecord;
+    private resolveConstraintViolation;
+    private normalizeEmail;
+    private normalizePhone;
+    private applyDatabaseResolution;
+    private applyAPIResolution;
+    private applyFileResolution;
+    private applyExternalServiceResolution;
+    private groupConflictsByType;
+    private groupConflictsBySeverity;
+    private isValidEmail;
+    private isValidPhone;
+    private generateConflictId;
+}
+//# sourceMappingURL=ConflictResolver.d.ts.map

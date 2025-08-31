@@ -1,0 +1,1 @@
+{"version":3,"file":"QuickActions.d.ts","sourceRoot":"","sources":["../../../../src/components/knowledge-base/dashboard/QuickActions.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAE1B,UAAU,iBAAiB;IACzB,eAAe,EAAE,MAAM,IAAI,CAAC;IAC5B,gBAAgB,EAAE,MAAM,IAAI,CAAC;IAC7B,gBAAgB,EAAE,MAAM,IAAI,CAAC;CAC9B;AAED,eAAO,MAAM,YAAY,EAAE,KAAK,CAAC,EAAE,CAAC,iBAAiB,CAoDpD,CAAC"}

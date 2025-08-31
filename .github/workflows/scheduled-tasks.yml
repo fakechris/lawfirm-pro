@@ -1,0 +1,129 @@
+name: Scheduled Tasks & Monitoring
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+    inputs:
+      task_type:
+        description: 'Type of task to run'
+        required: true
+        default: 'backup'
+        type: choice
+        options:
+          - backup
+          - cleanup
+          - security-scan
+          - performance-test
+
+jobs:
+  database-backup:
+    name: Database Backup
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 * * *' || github.event.inputs.task_type == 'backup'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run database backup
+        run: |
+          ./scripts/deployment/backup-database.sh production \
+            "${{ secrets.PRODUCTION_KUBECONFIG }}" \
+            "${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            "${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            "${{ secrets.AWS_S3_BUCKET }}"
+
+      - name: Verify backup integrity
+        run: |
+          ./scripts/deployment/verify-backup.sh \
+            "${{ secrets.AWS_S3_BUCKET }}" \
+            "${{ github.run_number }}"
+
+      - name: Notify backup status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#backups'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  system-cleanup:
+    name: System Cleanup
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 */6 * * *' || github.event.inputs.task_type == 'cleanup'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cleanup old logs
+        run: |
+          ./scripts/deployment/cleanup-logs.sh production \
+            "${{ secrets.PRODUCTION_KUBECONFIG }}"
+
+      - name: Cleanup temporary files
+        run: |
+          ./scripts/deployment/cleanup-temp-files.sh production \
+            "${{ secrets.PRODUCTION_KUBECONFIG }}"
+
+      - name: Cleanup database
+        run: |
+          ./scripts/deployment/cleanup-database.sh \
+            "${{ secrets.PRODUCTION_DATABASE_URL }}"
+
+  security-monitoring:
+    name: Security Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 * * *' || github.event.inputs.task_type == 'security-scan'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security monitoring
+        run: |
+          ./scripts/deployment/security-monitor.sh \
+            "${{ secrets.PRODUCTION_HEALTH_CHECK_URL }}" \
+            "${{ secrets.SECURITY_WEBHOOK }}"
+
+      - name: Check for vulnerabilities
+        run: |
+          ./scripts/deployment/vulnerability-check.sh \
+            "${{ secrets.PRODUCTION_KUBECONFIG }}"
+
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 */6 * * *'
+
+    steps:
+      - name: Run performance checks
+        run: |
+          ./scripts/deployment/performance-check.sh \
+            "${{ secrets.PRODUCTION_HEALTH_CHECK_URL }}" \
+            "${{ secrets.PERFORMANCE_THRESHOLD_CPU }}" \
+            "${{ secrets.PERFORMANCE_THRESHOLD_MEMORY }}"
+
+      - name: Generate performance report
+        run: |
+          ./scripts/deployment/generate-performance-report.sh \
+            "${{ github.run_number }}" \
+            "${{ secrets.PERFORMANCE_WEBHOOK }}"

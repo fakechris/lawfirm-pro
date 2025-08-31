@@ -1,0 +1,46 @@
+import { TaskNotificationService } from '../services/tasks/TaskNotificationService';
+import { EmailNotificationService } from '../services/tasks/EmailNotificationService';
+import { InAppNotificationService } from '../services/tasks/InAppNotificationService';
+import { NotificationPreferenceService } from '../services/tasks/NotificationPreferenceService';
+import { Database } from '../utils/database';
+export declare class NotificationController {
+    private taskNotificationService;
+    private emailService;
+    private inAppService;
+    private preferenceService;
+    private db;
+    constructor(taskNotificationService: TaskNotificationService, emailService: EmailNotificationService, inAppService: InAppNotificationService, preferenceService: NotificationPreferenceService, db: Database);
+    private createNotificationSchema;
+    private updatePreferencesSchema;
+    private taskNotificationSchema;
+    private notificationOptionsSchema;
+    createNotification: any;
+    getNotifications: any;
+    getUnreadNotifications: any;
+    getNotificationById: any;
+    markAsRead: any;
+    markAllAsRead: any;
+    deleteNotification: any;
+    getNotificationStats: any;
+    searchNotifications: any;
+    getPreferences: any;
+    updatePreferences: any;
+    resetPreferences: any;
+    setQuietHours: any;
+    disableQuietHours: any;
+    getTimezoneInfo: any;
+    sendTaskAssignment: any;
+    sendTaskUpdate: any;
+    sendTaskCompletion: any;
+    sendDeadlineReminder: any;
+    sendOverdueTask: any;
+    sendTaskEscalation: any;
+    sendDependencyBlocked: any;
+    processEmailQueue: any;
+    retryFailedEmails: any;
+    cleanupExpiredNotifications: any;
+    cleanupOldNotifications: any;
+    sendBulkNotification: any;
+    checkDeliveryStatus: any;
+}
+//# sourceMappingURL=NotificationController.d.ts.map

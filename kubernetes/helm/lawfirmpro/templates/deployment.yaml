@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lawfirmpro.fullname" . }}
+  labels:
+    {{- include "lawfirmpro.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "lawfirmpro.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "lawfirmpro.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "lawfirmpro.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.env.NODE_ENV }}
+            - name: PORT
+              value: "{{ .Values.service.port }}"
+            - name: LOG_LEVEL
+              value: {{ .Values.env.LOG_LEVEL }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.secrets.databasePassword | default .Values.database.username }}:{{ .Values.secrets.databasePassword | default .Values.database.password }}@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}?sslmode={{ .Values.database.ssl | ternary "require" "disable" }}"
+            - name: REDIS_URL
+              value: "redis://{{ .Values.secrets.redisPassword | default .Values.redis.password }}@{{ .Values.redis.host }}:{{ .Values.redis.port }}/{{ .Values.redis.db }}"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "lawfirmpro.fullname" . }}-secrets
+                  key: jwt-secret
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "lawfirmpro.fullname" . }}-secrets
+                  key: session-secret
+          envFrom:
+            - configMapRef:
+                name: {{ include "lawfirmpro.fullname" . }}-config
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config
+            - name: uploads
+              mountPath: /app/uploads
+            - name: logs
+              mountPath: /app/logs
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: app-config
+          configMap:
+            name: {{ include "lawfirmpro.fullname" . }}-config
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "lawfirmpro.fullname" . }}-uploads
+        - name: logs
+          persistentVolumeClaim:
+            claimName: {{ include "lawfirmpro.fullname" . }}-logs
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
